@@ -1,0 +1,11 @@
+my-feature/
+ ├── public/
+ │    └── index.html
+ ├── src/
+ │    ├── components/
+ │    │     └── FeatureComponent.jsx
+ │    ├── App.jsx
+ │    ├── index.js
+ │    └── styles.css
+ ├── package.json
+ ├── README.md
