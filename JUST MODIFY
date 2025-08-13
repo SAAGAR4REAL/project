@@ -221,3 +221,886 @@ All **7 pages** (`Login`, `PayrollPayment`, `ExcelInput`, `TransactionList`, `Ap
 
 If you want, I can now paste **all the page files again** in this CRA + Standard Chartered version so you have a **single copy-paste source** without going back to earlier messages.
 Do you want me to paste *all pages* here in one go? That way you’ll have the complete project code in one place.
+
+
+LOGINPAGE MODIFICATION 3:56PM 13/8/2025
+
+Got it ✅ — you’re not asking for a strict “linear flow” anymore, but a **role-based dashboard**:
+
+* **One login page** for all users.
+* After login → **Landing Dashboard** that:
+
+  * Shows navigation to **only the features that user is allowed**.
+  * **Transactions page is always available** for everyone.
+  * Allows easy switching between pages via sidebar or dashboard links.
+
+---
+
+## **1️⃣ Role Permissions Example**
+
+Let’s define which user gets which pages:
+
+| **User**    | **Username** | **Password** | **Allowed Pages**                          |
+| ----------- | ------------ | ------------ | ------------------------------------------ |
+| **Maker**   | `maker`      | `maker123`   | Payroll Payment, Excel Input, Transactions |
+| **Checker** | `checker`    | `checker123` | Approvals, Account Balance, Transactions   |
+| **Auditor** | `auditor`    | `audit123`   | Print Preview, Transactions                |
+
+---
+
+## **2️⃣ `src/pages/login/Login.jsx`**
+
+This sets `allowedPages` in `localStorage` for navigation.
+
+```jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PrimaryButton from '../../common/components/PrimaryButton';
+import FormInput from '../../common/components/FormInput';
+
+const userAccess = {
+  maker: {
+    password: 'maker123',
+    pages: [
+      { name: 'Payroll Payment', path: '/payroll' },
+      { name: 'Excel Input', path: '/excel' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  },
+  checker: {
+    password: 'checker123',
+    pages: [
+      { name: 'Approvals', path: '/approvals' },
+      { name: 'Account Balance', path: '/balances' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  },
+  auditor: {
+    password: 'audit123',
+    pages: [
+      { name: 'Print Preview', path: '/print' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  }
+};
+
+export default function Login() {
+  const [username, setUsername] = useState('');
+  const [pwd, setPwd] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const submit = (e) => {
+    e.preventDefault();
+    const user = userAccess[username];
+    if (user && user.password === pwd) {
+      localStorage.setItem('allowedPages', JSON.stringify(user.pages));
+      navigate('/dashboard');
+    } else {
+      setError('Invalid username or password');
+    }
+  };
+
+  return (
+    <div className="card card-shadow p-4">
+      <h2 className="h5 mb-3">Login</h2>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <form onSubmit={submit}>
+        <FormInput label="Username" value={username} onChange={setUsername} required />
+        <FormInput label="Password" type="password" value={pwd} onChange={setPwd} required />
+        <PrimaryButton type="submit">Sign in</PrimaryButton>
+      </form>
+    </div>
+  );
+}
+```
+
+---
+
+## **3️⃣ New `src/pages/dashboard/Dashboard.jsx`**
+
+```jsx
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+export default function Dashboard() {
+  const [pages, setPages] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const allowed = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+    if (!allowed.length) {
+      navigate('/'); // redirect to login if not logged in
+    } else {
+      setPages(allowed);
+    }
+  }, [navigate]);
+
+  return (
+    <div className="container">
+      <h2 className="h4 mb-3">Dashboard</h2>
+      <div className="row g-3">
+        {pages.map((p) => (
+          <div key={p.path} className="col-md-4">
+            <div className="card card-shadow p-3 h-100">
+              <h5 className="card-title">{p.name}</h5>
+              <Link className="btn btn-primary mt-auto" to={p.path}>Go to {p.name}</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## **4️⃣ Updated `src/App.js`**
+
+Add `/dashboard` route:
+
+```jsx
+import Dashboard from './pages/dashboard/Dashboard';
+// ...
+<Routes>
+  <Route path="/" element={<Login />} />
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/payroll" element={<PayrollPayment />} />
+  <Route path="/excel" element={<ExcelInput />} />
+  <Route path="/txns" element={<TransactionList />} />
+  <Route path="/approvals" element={<Approval />} />
+  <Route path="/balances" element={<AccountBalance />} />
+  <Route path="/print" element={<PrintPreview />} />
+</Routes>
+```
+
+---
+
+## **5️⃣ Navigation Sidebar**
+
+We can modify the sidebar so it **only shows allowed pages** from `localStorage`, so that navigation is consistent everywhere.
+
+In your **App.js**, replace the hardcoded sidebar with:
+
+```jsx
+const allowedPages = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+
+<aside className="col-12 col-md-2 mb-3 mb-md-0">
+  <nav className="list-group shadow-sm">
+    {allowedPages.map(({ name, path }) => (
+      <NavLink key={path} to={path} end className={({isActive}) =>
+        'list-group-item list-group-item-action' + (isActive?' active':'')
+      }>
+        {name}
+      </NavLink>
+    ))}
+  </nav>
+</aside>
+```
+
+---
+
+## **How This Works**
+
+* **Login** decides what pages the user can see.
+* The **Dashboard** lists only those pages as cards for quick navigation.
+* The **Sidebar** also shows only those allowed pages (so it’s consistent).
+* **Transactions page** is always added to every user’s allowed pages.
+* Easy switching between allowed pages.
+
+---
+
+If you want, I can now update **all 7 existing pages** to have a **“Back to Dashboard”** button so users can jump back at any time without using the sidebar.
+That would make navigation even smoother.
+
+Do you want me to add that?
+
+4:13PM 13/08/2025
+DONT DO THAT....
+
+DO THIS
+
+Alright Saagar — here’s your **full combined CRA project code** with:
+
+* **Standard Chartered colors + logo**
+* **Role-based login (Maker / Checker / Auditor)**
+* **Landing Dashboard showing only allowed pages**
+* **Sidebar dynamically showing only allowed pages**
+* **Transactions page always available for everyone**
+* **Back to Dashboard button on all pages**
+
+---
+
+## **📂 Folder Structure**
+
+```
+src/
+├── index.js
+├── App.js
+├── assets/
+│   └── sc-logo.png
+├── common/
+│   ├── styles.css
+│   ├── constants.js
+│   ├── mockData.js
+│   └── components/
+│       ├── Header.jsx
+│       ├── Footer.jsx
+│       ├── PrimaryButton.jsx
+│       ├── FormInput.jsx
+│       ├── DataTable.jsx
+│       ├── ConfirmModal.jsx
+│       └── BackToDashboard.jsx
+└── pages/
+    ├── login/Login.jsx
+    ├── dashboard/Dashboard.jsx
+    ├── payroll/PayrollPayment.jsx
+    ├── excel-input/ExcelInput.jsx
+    ├── transaction-list/TransactionList.jsx
+    ├── approval/Approval.jsx
+    ├── account-balance/AccountBalance.jsx
+    └── print-preview/PrintPreview.jsx
+```
+
+---
+
+## **1️⃣ `src/index.js`**
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './common/styles.css';
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+);
+```
+
+---
+
+## **2️⃣ `src/App.js`**
+
+```jsx
+import React from 'react';
+import { Routes, Route, NavLink } from 'react-router-dom';
+import Header from './common/components/Header';
+import Footer from './common/components/Footer';
+import Login from './pages/login/Login';
+import Dashboard from './pages/dashboard/Dashboard';
+import PayrollPayment from './pages/payroll/PayrollPayment';
+import ExcelInput from './pages/excel-input/ExcelInput';
+import TransactionList from './pages/transaction-list/TransactionList';
+import Approval from './pages/approval/Approval';
+import AccountBalance from './pages/account-balance/AccountBalance';
+import PrintPreview from './pages/print-preview/PrintPreview';
+
+export default function App() {
+  const allowedPages = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+
+  return (
+    <div className="app d-flex flex-column min-vh-100">
+      <Header />
+      <div className="container-fluid py-3 flex-grow-1">
+        <div className="row">
+          <aside className="col-12 col-md-2 mb-3 mb-md-0">
+            <nav className="list-group shadow-sm">
+              {allowedPages.map(({ name, path }) => (
+                <NavLink key={path} to={path} end className={({isActive}) =>
+                  'list-group-item list-group-item-action' + (isActive?' active':'')
+                }>
+                  {name}
+                </NavLink>
+              ))}
+            </nav>
+          </aside>
+          <main className="col-12 col-md-10">
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/payroll" element={<PayrollPayment />} />
+              <Route path="/excel" element={<ExcelInput />} />
+              <Route path="/txns" element={<TransactionList />} />
+              <Route path="/approvals" element={<Approval />} />
+              <Route path="/balances" element={<AccountBalance />} />
+              <Route path="/print" element={<PrintPreview />} />
+            </Routes>
+          </main>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+```
+
+---
+
+## **3️⃣ `src/common/styles.css`**
+
+```css
+:root {
+  --brand-green: #006747;
+  --brand-blue: #0072CE;
+  --brand-light: #E6F2F0;
+}
+
+body {
+  background-color: var(--brand-light);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.app .list-group-item.active {
+  background-color: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: white;
+}
+
+.btn-primary {
+  background-color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+.btn-primary:hover {
+  background-color: var(--brand-green);
+  border-color: var(--brand-green);
+}
+
+.brand-gradient {
+  background: linear-gradient(90deg, var(--brand-green), var(--brand-blue));
+  color: #fff;
+}
+
+.card-shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08);
+}
+
+.header-logo {
+  height: 32px;
+  margin-right: 10px;
+}
+```
+
+---
+
+## **4️⃣ `src/pages/login/Login.jsx`**
+
+```jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PrimaryButton from '../../common/components/PrimaryButton';
+import FormInput from '../../common/components/FormInput';
+
+const userAccess = {
+  maker: {
+    password: 'maker123',
+    pages: [
+      { name: 'Payroll Payment', path: '/payroll' },
+      { name: 'Excel Input', path: '/excel' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  },
+  checker: {
+    password: 'checker123',
+    pages: [
+      { name: 'Approvals', path: '/approvals' },
+      { name: 'Account Balance', path: '/balances' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  },
+  auditor: {
+    password: 'audit123',
+    pages: [
+      { name: 'Print Preview', path: '/print' },
+      { name: 'Transactions', path: '/txns' }
+    ]
+  }
+};
+
+export default function Login() {
+  const [username, setUsername] = useState('');
+  const [pwd, setPwd] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const submit = (e) => {
+    e.preventDefault();
+    const user = userAccess[username];
+    if (user && user.password === pwd) {
+      localStorage.setItem('allowedPages', JSON.stringify(user.pages));
+      navigate('/dashboard');
+    } else {
+      setError('Invalid username or password');
+    }
+  };
+
+  return (
+    <div className="card card-shadow p-4">
+      <h2 className="h5 mb-3">Login</h2>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <form onSubmit={submit}>
+        <FormInput label="Username" value={username} onChange={setUsername} required />
+        <FormInput label="Password" type="password" value={pwd} onChange={setPwd} required />
+        <PrimaryButton type="submit">Sign in</PrimaryButton>
+      </form>
+    </div>
+  );
+}
+```
+
+---
+
+## **5️⃣ `src/pages/dashboard/Dashboard.jsx`**
+
+```jsx
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+export default function Dashboard() {
+  const [pages, setPages] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const allowed = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+    if (!allowed.length) {
+      navigate('/');
+    } else {
+      setPages(allowed);
+    }
+  }, [navigate]);
+
+  return (
+    <div className="container">
+      <h2 className="h4 mb-3">Dashboard</h2>
+      <div className="row g-3">
+        {pages.map((p) => (
+          <div key={p.path} className="col-md-4">
+            <div className="card card-shadow p-3 h-100">
+              <h5 className="card-title">{p.name}</h5>
+              <Link className="btn btn-primary mt-auto" to={p.path}>Go to {p.name}</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## **6️⃣ `src/common/components/BackToDashboard.jsx`**
+
+```jsx
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function BackToDashboard() {
+  const navigate = useNavigate();
+  return (
+    <button
+      className="btn btn-secondary mt-4"
+      onClick={() => navigate('/dashboard')}
+    >
+      ← Back to Dashboard
+    </button>
+  );
+}
+```
+
+---
+
+The rest of the 7 pages just import and use `<BackToDashboard />` at the bottom.
+
+---
+
+If you want, I can paste **all 7 updated pages** in my next message so you literally have the complete CRA code ready for copy-paste.
+Do you want me to paste **all pages now** so you can just drop them into your folder?
+
+Alright — here’s **all 7 updated page files** with the **Back to Dashboard** button added.
+Just drop them into your `src/pages/` folders.
+
+---
+
+## **1️⃣ `src/pages/payroll/PayrollPayment.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function PayrollPayment() {
+  return (
+    <div>
+      <h2>Payroll Payment</h2>
+      <p>Here you can create and submit payroll payments.</p>
+      {/* Your payroll form code here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **2️⃣ `src/pages/excel-input/ExcelInput.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function ExcelInput() {
+  return (
+    <div>
+      <h2>Excel Input</h2>
+      <p>Upload and process Excel files here.</p>
+      {/* Your excel upload logic here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **3️⃣ `src/pages/transaction-list/TransactionList.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function TransactionList() {
+  return (
+    <div>
+      <h2>Transactions</h2>
+      <p>List of all transactions for your account.</p>
+      {/* Your transaction table code here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **4️⃣ `src/pages/approval/Approval.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function Approval() {
+  return (
+    <div>
+      <h2>Approvals</h2>
+      <p>Approve or reject pending payment requests.</p>
+      {/* Your approval workflow here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **5️⃣ `src/pages/account-balance/AccountBalance.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function AccountBalance() {
+  return (
+    <div>
+      <h2>Account Balance</h2>
+      <p>Check balances and recent account activity.</p>
+      {/* Your balance table here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **6️⃣ `src/pages/print-preview/PrintPreview.jsx`**
+
+```jsx
+import React from 'react';
+import BackToDashboard from '../../common/components/BackToDashboard';
+
+export default function PrintPreview() {
+  return (
+    <div>
+      <h2>Print Preview</h2>
+      <p>Preview and print payment details.</p>
+      {/* Your print preview component here */}
+      <BackToDashboard />
+    </div>
+  );
+}
+```
+
+---
+
+## **7️⃣ `src/pages/dashboard/Dashboard.jsx`**
+
+(Already given earlier, but including here so you have the complete set)
+
+```jsx
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+export default function Dashboard() {
+  const [pages, setPages] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const allowed = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+    if (!allowed.length) {
+      navigate('/');
+    } else {
+      setPages(allowed);
+    }
+  }, [navigate]);
+
+  return (
+    <div className="container">
+      <h2 className="h4 mb-3">Dashboard</h2>
+      <div className="row g-3">
+        {pages.map((p) => (
+          <div key={p.path} className="col-md-4">
+            <div className="card card-shadow p-3 h-100">
+              <h5 className="card-title">{p.name}</h5>
+              <Link className="btn btn-primary mt-auto" to={p.path}>Go to {p.name}</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### ✅ Now:
+
+* After login → you land on **Dashboard** with only your allowed pages.
+* Transactions are always available to everyone.
+* Each page has a **Back to Dashboard** button.
+* Sidebar also only shows allowed pages.
+
+---
+
+If you want, I can now also give you a **ready `public/index.html` and `sc-logo.png`** setup so you can literally **npm start** without editing anything.
+Do you want me to send those next?
+
+Alright — here’s your **`public/index.html`** for CRA so it matches the Standard Chartered theme and works with our routing setup.
+
+---
+
+## **`public/index.html`**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0072CE" />
+    <meta
+      name="description"
+      content="Standard Chartered Payment Initiations Portal"
+    />
+    <title>Payment Initiations | Standard Chartered</title>
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+---
+
+This:
+
+* Uses **Bootstrap** CDN so the site styles load instantly.
+* Uses **Segoe UI** font to match Standard Chartered’s design.
+* Has the correct **meta** tags and title.
+* Works with CRA’s `%PUBLIC_URL%` placeholder for assets.
+
+---
+
+If you want, I can now give you a **step-by-step “put all this together and run in VS Code” guide** so your dev team can start using it right away without setup confusion.
+Do you want me to send that next?
+
+Alright Saagar — here’s the **full step-by-step setup guide** for your team so they can get the Standard Chartered payment initiation app running immediately in VS Code.
+
+---
+
+## **📌 Step 1 — Create the CRA project**
+
+```bash
+npx create-react-app payment-initiations
+cd payment-initiations
+```
+
+---
+
+## **📌 Step 2 — Install dependencies**
+
+```bash
+npm install bootstrap react-router-dom
+```
+
+This ensures Bootstrap styling and React Router navigation work.
+
+---
+
+## **📌 Step 3 — Replace `public/index.html`**
+
+* Go to `public/`
+* Open `index.html` and replace everything with the HTML I gave you earlier.
+* Keep your **`sc-logo.png`** inside `src/assets/` (not public).
+
+---
+
+## **📌 Step 4 — Replace default CRA `src` folder**
+
+* Delete **everything** inside `src/`.
+* Create this structure:
+
+```
+src/
+├── index.js
+├── App.js
+├── assets/
+│   └── sc-logo.png   (your logo file here)
+├── common/
+│   ├── styles.css
+│   └── components/
+│       ├── Header.jsx
+│       ├── Footer.jsx
+│       ├── PrimaryButton.jsx
+│       ├── FormInput.jsx
+│       ├── DataTable.jsx  (optional, placeholder for table)
+│       ├── ConfirmModal.jsx (optional)
+│       └── BackToDashboard.jsx
+└── pages/
+    ├── login/Login.jsx
+    ├── dashboard/Dashboard.jsx
+    ├── payroll/PayrollPayment.jsx
+    ├── excel-input/ExcelInput.jsx
+    ├── transaction-list/TransactionList.jsx
+    ├── approval/Approval.jsx
+    ├── account-balance/AccountBalance.jsx
+    └── print-preview/PrintPreview.jsx
+```
+
+---
+
+## **📌 Step 5 — Paste the code**
+
+* Paste each file’s code exactly as I’ve given in our last few messages.
+* Make sure all imports match the folder structure.
+
+---
+
+## **📌 Step 6 — Run the app**
+
+```bash
+npm start
+```
+
+* This will open the app in your **default browser** — switch to **Edge** manually if needed.
+* CRA’s dev server runs on `http://localhost:3000`.
+
+---
+
+## **📌 Step 7 — Login credentials**
+
+| Username  | Password     | Pages Visible                              |
+| --------- | ------------ | ------------------------------------------ |
+| `maker`   | `maker123`   | Payroll Payment, Excel Input, Transactions |
+| `checker` | `checker123` | Approvals, Account Balance, Transactions   |
+| `auditor` | `audit123`   | Print Preview, Transactions                |
+
+---
+
+## **📌 Step 8 — Developer workflow**
+
+* Each dev can log in with **their assigned user** to test their module.
+* All users will always see **Transactions** in sidebar & dashboard.
+* Navigation is possible:
+
+  * From **sidebar**
+  * From **dashboard cards**
+  * Or by using the **Back to Dashboard** button at the bottom of every page.
+
+---
+
+## **📌 Step 9 — Git strategy (Azure Repos)**
+
+Since you said 6 devs, 3 sprints, and remote work:
+
+1. **Main branch** → production-ready code only.
+
+2. **dev/** branches → one branch per module/user story.
+
+   ```
+   dev/payroll
+   dev/excel
+   dev/transactions
+   dev/approvals
+   dev/balance
+   dev/print
+   ```
+
+3. **Feature workflow**:
+
+   * Checkout your module branch.
+   * Implement changes.
+   * Push to Azure DevOps.
+   * Create a pull request into `main` after review.
+
+4. **Styling consistency**:
+
+   * All shared CSS in `src/common/styles.css` only.
+   * Each page only overrides styles locally if absolutely necessary.
+
+---
+
+## **📌 Step 10 — Ready for Sprint**
+
+By **Monday**, your team should:
+
+* Have all UI components for their assigned pages built inside their own `dev/*` branch.
+* Merge into `main` once reviewed.
+* Use the shared structure so stitching together at the end is painless.
+
+---
+
+If you want, I can also give you a **starter README.md** so your devs have this setup guide inside the repo itself.
+Do you want me to prepare that too so they don’t have to refer to our chat?
