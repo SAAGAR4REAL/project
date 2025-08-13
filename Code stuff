@@ -556,7 +556,8 @@ export default function TransactionList() {
   );
 }
 ```
-
+If you want, I can now paste **Approval.jsx, PrintPreview\.jsx, and AccountBalance.jsx** so all six developer pages are complete.
+Do you want me to paste those remaining three now?
 
 
 ---
@@ -723,6 +724,4 @@ If you want, I can also give you a **ready-to-run Git branch setup** for Azure R
 Do you want me to prepare that branching plan?
 
 
-If you want, I can now paste **Approval.jsx, PrintPreview\.jsx, and AccountBalance.jsx** so all six developer pages are complete.
-Do you want me to paste those remaining three now?
 
