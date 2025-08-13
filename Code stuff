@@ -557,7 +557,171 @@ export default function TransactionList() {
 }
 ```
 
+
+
 ---
+Alright — here are the last three developer pages so your `/pages` folder is complete.
+
+---
+
+## **`src/pages/approval/Approval.jsx`** *(Dev 5)*
+
+```jsx
+import React, { useState } from 'react';
+import { approvals } from '../../common/mockData';
+import DataTable from '../../common/components/DataTable';
+import ConfirmModal from '../../common/components/ConfirmModal';
+
+export default function Approval() {
+  const [list, setList] = useState(approvals);
+
+  const act = (id, action) => {
+    setList(l => l.filter(x => x.id !== id));
+    alert(`${action} ${id} (mock)`);
+  };
+
+  const columns = [
+    { key:'id', header:'ID' },
+    { key:'date', header:'Date' },
+    { key:'employeeId', header:'Employee' },
+    { key:'currency', header:'CCY' },
+    { key:'amount', header:'Amount' }
+  ];
+
+  return (
+    <div className="d-grid gap-3">
+      <h2 className="h5">Pending Approvals</h2>
+      <DataTable
+        columns={columns}
+        rows={list}
+        actions={(r)=>(
+          <>
+            <button
+              className="btn btn-sm btn-outline-success me-2"
+              data-bs-toggle="modal"
+              data-bs-target="#approve"
+              onClick={()=>window.__approve_id=r.id}
+            >Approve</button>
+            <button
+              className="btn btn-sm btn-outline-danger"
+              data-bs-toggle="modal"
+              data-bs-target="#reject"
+              onClick={()=>window.__reject_id=r.id}
+            >Reject</button>
+          </>
+        )}
+      />
+      <ConfirmModal id="approve" title="Approve payment"
+        body="Are you sure you want to approve?"
+        onConfirm={()=>act(window.__approve_id,'Approved')} />
+      <ConfirmModal id="reject" title="Reject payment"
+        body="Are you sure you want to reject?"
+        onConfirm={()=>act(window.__reject_id,'Rejected')} />
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/pages/print-preview/PrintPreview.jsx`** *(Dev 3 or shared)*
+
+```jsx
+import React from 'react';
+import { transactions } from '../../common/mockData';
+
+export default function PrintPreview() {
+  const t = transactions[0]; // mock first transaction
+  return (
+    <div className="card card-shadow p-4">
+      <h2 className="h5">Transaction Print Preview</h2>
+      <div className="border p-3 bg-white">
+        <h3 className="h6">Transaction #{t.id}</h3>
+        <hr/>
+        <p><strong>Date:</strong> {t.date}</p>
+        <p><strong>Employee:</strong> {t.employeeId}</p>
+        <p><strong>Amount:</strong> {t.currency} {t.amount}</p>
+        <p><strong>Status:</strong> {t.status}</p>
+      </div>
+      <button className="btn btn-outline-primary mt-3" onClick={()=>window.print()}>Print</button>
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/pages/account-balance/AccountBalance.jsx`** *(Dev 6)*
+
+```jsx
+import React, { useState } from 'react';
+import { accounts } from '../../common/mockData';
+
+export default function AccountBalance() {
+  const [selected, setSelected] = useState(accounts[0].id);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  const acc = accounts.find(a=>a.id===selected);
+
+  return (
+    <div className="d-grid gap-3">
+      <div className="row g-3">
+        {accounts.map(a=>(
+          <div className="col-md-4" key={a.id}>
+            <div className="card card-shadow p-3">
+              <div className="d-flex justify-content-between">
+                <strong>{a.name}</strong>
+                <span className="badge bg-secondary">{a.currency}</span>
+              </div>
+              <div className="display-6">{a.currency} {a.balance.toLocaleString()}</div>
+              <button
+                className="btn btn-sm btn-outline-primary mt-2"
+                onClick={()=>setSelected(a.id)}
+              >
+                View Statement
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card card-shadow p-3">
+        <h2 className="h6 mb-3">Statement (mock) — {acc.name}</h2>
+        <div className="row g-2">
+          <div className="col-auto">
+            <input type="date" className="form-control" value={from} onChange={e=>setFrom(e.target.value)} />
+          </div>
+          <div className="col-auto">
+            <input type="date" className="form-control" value={to} onChange={e=>setTo(e.target.value)} />
+          </div>
+          <div className="col-auto">
+            <button className="btn btn-outline-secondary" onClick={()=>alert('Fetch mock statement')}>Fetch</button>
+          </div>
+          <div className="col-auto">
+            <button className="btn btn-primary" onClick={()=>alert('Download mock PDF')}>Download</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+✅ Now your CRA starter will have:
+
+* `/common` folder (shared styles, mock data, components)
+* `/pages` folder (1 per developer + print preview)
+* `App.js` with routing and sidebar
+* Bootstrap and SCSS integration
+
+---
+
+If you want, I can also give you a **ready-to-run Git branch setup** for Azure Repos so each developer starts in their own branch with their assigned page.
+Do you want me to prepare that branching plan?
+
 
 If you want, I can now paste **Approval.jsx, PrintPreview\.jsx, and AccountBalance.jsx** so all six developer pages are complete.
 Do you want me to paste those remaining three now?
