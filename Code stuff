@@ -155,3 +155,206 @@ export default function App() {
 I can now give you **all remaining files** (`/common` + `/pages`) so your CRA starter becomes the **multi-developer setup** in one go.
 
 Do you want me to paste those next? That will make your project fully plug-and-play.
+
+
+Alright — here’s the **full `/common` and `/pages` code** for your CRA starter, so you and your team can drop it in and be ready to go.
+
+---
+
+## **`src/common/styles.scss`**
+
+```scss
+@import "bootstrap/scss/bootstrap";
+
+:root {
+  --brand-primary: #0050b3;
+  --brand-accent: #21a675;
+}
+
+body {
+  background-color: #f7f9fb;
+}
+
+.app .list-group-item.active {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.btn-primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.brand-gradient {
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-accent));
+  color: #fff;
+}
+
+.card-shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08);
+}
+```
+
+---
+
+## **`src/common/constants.js`**
+
+```js
+export const currencies = ['INR', 'USD', 'EUR', 'GBP', 'SGD'];
+```
+
+---
+
+## **`src/common/mockData.js`**
+
+```js
+export const accounts = [
+  { id: 'ACC001', name: 'Corporate INR A/C', currency: 'INR', balance: 1245500.55 },
+  { id: 'ACC002', name: 'Corporate USD A/C', currency: 'USD', balance: 245000.10 },
+];
+
+export const transactions = [
+  { id: 'TX1001', date: '2025-08-01', type: 'PAY', employeeId: 'E102', currency: 'INR', amount: 45000, status: 'Draft' },
+  { id: 'TX1002', date: '2025-08-02', type: 'PAY', employeeId: 'E103', currency: 'USD', amount: 800, status: 'Pending Approval' },
+  { id: 'TX1003', date: '2025-08-05', type: 'PAY', employeeId: 'E104', currency: 'INR', amount: 61000, status: 'Approved' },
+];
+
+export const approvals = transactions.filter(t => t.status === 'Pending Approval');
+```
+
+---
+
+## **`src/common/components/Header.jsx`**
+
+```jsx
+import React from 'react';
+
+export default function Header() {
+  return (
+    <header className="brand-gradient py-2 px-3">
+      <div className="d-flex align-items-center justify-content-between container-fluid">
+        <h1 className="h5 mb-0">Payment Initiations</h1>
+        <div className="d-flex gap-3 small">
+          <span>Help</span>
+          <span>Profile</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+```
+
+---
+
+## **`src/common/components/Footer.jsx`**
+
+```jsx
+import React from 'react';
+
+export default function Footer() {
+  return (
+    <footer className="bg-light border-top py-2 small text-center">
+      © 2025 Your Bank • For demo use only
+    </footer>
+  );
+}
+```
+
+---
+
+## **`src/common/components/PrimaryButton.jsx`**
+
+```jsx
+import React from 'react';
+export default function PrimaryButton({ children, ...props }) {
+  return <button className="btn btn-primary" {...props}>{children}</button>;
+}
+```
+
+---
+
+## **`src/common/components/FormInput.jsx`**
+
+```jsx
+import React from 'react';
+export default function FormInput({ label, type='text', value, onChange, required, ...rest }) {
+  return (
+    <div className="mb-3">
+      <label className="form-label">{label}{required && ' *'}</label>
+      <input
+        className="form-control"
+        type={type}
+        value={value}
+        onChange={e=>onChange(e.target.value)}
+        required={required}
+        {...rest}
+      />
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/common/components/DataTable.jsx`**
+
+```jsx
+import React from 'react';
+
+export default function DataTable({ columns, rows, actions }) {
+  return (
+    <div className="table-responsive card card-shadow">
+      <table className="table table-sm table-hover mb-0">
+        <thead className="table-light">
+          <tr>
+            {columns.map(c => <th key={c.key}>{c.header}</th>)}
+            {actions && <th>Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, idx) => (
+            <tr key={r.id || idx}>
+              {columns.map(c => <td key={c.key}>{c.render ? c.render(r[c.key], r) : r[c.key]}</td>)}
+              {actions && <td>{actions(r)}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/common/components/ConfirmModal.jsx`**
+
+```jsx
+import React from 'react';
+
+export default function ConfirmModal({ id, title, body, onConfirm }) {
+  return (
+    <div className="modal fade" id={id} tabIndex="-1">
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header"><h5 className="modal-title">{title}</h5>
+            <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div className="modal-body">{body}</div>
+          <div className="modal-footer">
+            <button className="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button className="btn btn-primary" data-bs-dismiss="modal" onClick={onConfirm}>Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+This covers **Part 1 — `/common` folder**.
+Next, I’ll paste **Part 2 — `/pages` folder**, where each developer gets their own working page. That’s where all the mock UI for Login, Payroll Payment, Excel Input, Transactions, Approvals, Print Preview, and Account Balance will go.
+
+Do you want me to paste **Part 2 now** so your CRA setup is fully ready?
