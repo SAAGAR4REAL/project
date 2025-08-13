@@ -1,0 +1,157 @@
+Got it — you’re starting from a **CRA (Create React App) starter** template.
+
+To turn this into the **full multi-developer Payment Initiations project**, we’ll:
+
+1. Replace the default CRA `src` folder with the one containing
+
+   * `/common` (global styles, mock data, shared components)
+   * `/pages` (one folder per developer)
+   * Updated `App.js` for routing
+2. Keep `public/index.html` from CRA (it’s already fine).
+3. Install `react-router-dom`, `bootstrap`, and `sass`.
+
+---
+
+### **Step 1 — Install extra dependencies**
+
+In your project root:
+
+```bash
+npm install react-router-dom bootstrap sass
+```
+
+---
+
+### **Step 2 — Replace `src` folder structure**
+
+Inside `src/`, delete:
+
+```
+App.css
+App.js
+App.test.js
+index.css
+logo.svg
+reportWebVitals.js
+setupTests.js
+```
+
+Keep only:
+
+```
+index.js
+```
+
+Then add:
+
+```
+src/
+ ├─ App.js                # Our main app with routing
+ ├─ common/
+ │   ├─ styles.scss
+ │   ├─ constants.js
+ │   ├─ mockData.js
+ │   └─ components/
+ │       ├─ Header.jsx
+ │       ├─ Footer.jsx
+ │       ├─ PrimaryButton.jsx
+ │       ├─ FormInput.jsx
+ │       ├─ DataTable.jsx
+ │       └─ ConfirmModal.jsx
+ └─ pages/
+     ├─ login/Login.jsx
+     ├─ payroll/PayrollPayment.jsx
+     ├─ excel-input/ExcelInput.jsx
+     ├─ transaction-list/TransactionList.jsx
+     ├─ approval/Approval.jsx
+     ├─ print-preview/PrintPreview.jsx
+     └─ account-balance/AccountBalance.jsx
+```
+
+---
+
+### **Step 3 — Update `index.js`**
+
+Replace with:
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App';
+import './common/styles.scss';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+);
+```
+
+---
+
+### **Step 4 — Add `App.js`**
+
+(This will have the routing and side menu from my earlier code.)
+
+```jsx
+import React from 'react';
+import { Routes, Route, NavLink } from 'react-router-dom';
+import Header from './common/components/Header';
+import Footer from './common/components/Footer';
+import Login from './pages/login/Login';
+import PayrollPayment from './pages/payroll/PayrollPayment';
+import ExcelInput from './pages/excel-input/ExcelInput';
+import TransactionList from './pages/transaction-list/TransactionList';
+import Approval from './pages/approval/Approval';
+import AccountBalance from './pages/account-balance/AccountBalance';
+import PrintPreview from './pages/print-preview/PrintPreview';
+
+export default function App() {
+  return (
+    <div className="app d-flex flex-column min-vh-100">
+      <Header />
+      <div className="container-fluid py-3 flex-grow-1">
+        <div className="row">
+          <aside className="col-12 col-md-2 mb-3 mb-md-0">
+            <nav className="list-group shadow-sm">
+              {[
+                ['Login','/'],
+                ['Create PAY','/payroll'],
+                ['Excel Input','/excel'],
+                ['Transactions','/txns'],
+                ['Approvals','/approvals'],
+                ['Balances','/balances'],
+                ['Print Preview','/print']
+              ].map(([label, to]) => (
+                <NavLink key={to} to={to} end className={({isActive}) =>
+                  'list-group-item list-group-item-action' + (isActive?' active':'')
+                }>{label}</NavLink>
+              ))}
+            </nav>
+          </aside>
+          <main className="col-12 col-md-10">
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/payroll" element={<PayrollPayment />} />
+              <Route path="/excel" element={<ExcelInput />} />
+              <Route path="/txns" element={<TransactionList />} />
+              <Route path="/approvals" element={<Approval />} />
+              <Route path="/balances" element={<AccountBalance />} />
+              <Route path="/print" element={<PrintPreview />} />
+            </Routes>
+          </main>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+```
+
+---
+
+I can now give you **all remaining files** (`/common` + `/pages`) so your CRA starter becomes the **multi-developer setup** in one go.
+
+Do you want me to paste those next? That will make your project fully plug-and-play.
