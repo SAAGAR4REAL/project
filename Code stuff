@@ -358,3 +358,207 @@ This covers **Part 1 — `/common` folder**.
 Next, I’ll paste **Part 2 — `/pages` folder**, where each developer gets their own working page. That’s where all the mock UI for Login, Payroll Payment, Excel Input, Transactions, Approvals, Print Preview, and Account Balance will go.
 
 Do you want me to paste **Part 2 now** so your CRA setup is fully ready?
+
+Alright — here’s **Part 2** with all `/pages` code for each developer.
+Just create these folders inside `src/pages/` and paste the files.
+
+---
+
+## **`src/pages/login/Login.jsx`**  *(Dev 1)*
+
+```jsx
+import React, { useState } from 'react';
+import PrimaryButton from '../../common/components/PrimaryButton';
+import FormInput from '../../common/components/FormInput';
+
+export default function Login() {
+  const [user, setUser] = useState('');
+  const [pwd, setPwd] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const disabled = !user || !pwd || attempts >= 3;
+
+  const submit = (e) => {
+    e.preventDefault();
+    setAttempts(a => a + 1); // mock fail to show UI
+  };
+
+  return (
+    <div className="card card-shadow p-4">
+      <h2 className="h5 mb-3">Login</h2>
+      {attempts > 0 && attempts < 3 && (
+        <div className="alert alert-danger">Invalid credentials (mock). Attempts: {attempts}/3</div>
+      )}
+      {attempts >= 3 && (
+        <div className="alert alert-warning">Account locked after 3 failed attempts (mock).</div>
+      )}
+      <form onSubmit={submit}>
+        <FormInput label="Username" value={user} onChange={setUser} required />
+        <FormInput label="Password" type="password" value={pwd} onChange={setPwd} required />
+        <PrimaryButton disabled={disabled} type="submit">Sign in</PrimaryButton>
+      </form>
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/pages/payroll/PayrollPayment.jsx`**  *(Dev 2)*
+
+```jsx
+import React, { useState } from 'react';
+import { accounts } from '../../common/mockData';
+import { currencies } from '../../common/constants';
+import PrimaryButton from '../../common/components/PrimaryButton';
+import FormInput from '../../common/components/FormInput';
+
+export default function PayrollPayment() {
+  const [form, setForm] = useState({
+    accountId: accounts[0].id, employeeId: '', amount: '', currency: 'INR', date: ''
+  });
+  const update = (k,v)=>setForm(f=>({...f,[k]:v}));
+
+  const saveDraft = ()=> alert('Saved as Draft (mock): ' + JSON.stringify(form,null,2));
+  const submit = ()=> alert('Submitted (mock): ' + JSON.stringify(form,null,2));
+
+  return (
+    <div className="card card-shadow p-4">
+      <h2 className="h5">Create PAY (Payroll)</h2>
+      <div className="row">
+        <div className="col-md-6">
+          <div className="mb-3">
+            <label className="form-label">From Account *</label>
+            <select className="form-select" value={form.accountId} onChange={e=>update('accountId', e.target.value)}>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+            </select>
+          </div>
+          <FormInput label="Employee ID" value={form.employeeId} onChange={v=>update('employeeId',v)} required />
+          <FormInput label="Amount" type="number" value={form.amount} onChange={v=>update('amount',v)} required />
+          <div className="mb-3">
+            <label className="form-label">Currency *</label>
+            <select className="form-select" value={form.currency} onChange={e=>update('currency', e.target.value)}>
+              {currencies.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <FormInput label="Payment Date" type="date" value={form.date} onChange={v=>update('date',v)} required />
+        </div>
+      </div>
+      <div className="d-flex gap-2">
+        <button className="btn btn-outline-secondary" onClick={saveDraft}>Save as Draft</button>
+        <PrimaryButton onClick={submit}>Submit</PrimaryButton>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/pages/excel-input/ExcelInput.jsx`**  *(Dev 3)*
+
+```jsx
+import React, { useState } from 'react';
+
+export default function ExcelInput() {
+  const [rows, setRows] = useState([{ employeeId:'', amount:'', currency:'INR' }]);
+
+  const addRow = ()=> setRows(r => [...r, { employeeId:'', amount:'', currency:'INR' }]);
+  const removeRow = (i)=> setRows(r => r.filter((_,idx)=>idx!==i));
+  const update = (i,k,v)=> setRows(r => r.map((row,idx)=> idx===i? {...row,[k]:v}:row));
+
+  const pasteMock = ()=>{
+    setRows([
+      { employeeId:'E101', amount:'55000', currency:'INR' },
+      { employeeId:'E102', amount:'61000', currency:'INR' }
+    ]);
+  };
+
+  return (
+    <div className="card card-shadow p-3">
+      <h2 className="h5">Excel-style Transaction Entry</h2>
+      <div className="table-responsive">
+        <table className="table table-bordered table-sm align-middle">
+          <thead className="table-light">
+            <tr><th>Employee ID</th><th>Amount</th><th>Currency</th><th style={{width:100}}>Action</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r,i)=>(
+              <tr key={i}>
+                <td><input className="form-control form-control-sm" value={r.employeeId} onChange={e=>update(i,'employeeId',e.target.value)}/></td>
+                <td><input className="form-control form-control-sm" type="number" value={r.amount} onChange={e=>update(i,'amount',e.target.value)}/></td>
+                <td>
+                  <select className="form-select form-select-sm" value={r.currency} onChange={e=>update(i,'currency',e.target.value)}>
+                    <option>INR</option><option>USD</option><option>EUR</option>
+                  </select>
+                </td>
+                <td><button className="btn btn-outline-danger btn-sm" onClick={()=>removeRow(i)}>Remove</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="d-flex gap-2">
+        <button className="btn btn-outline-secondary" onClick={addRow}>Add row</button>
+        <button className="btn btn-outline-secondary" onClick={pasteMock}>Paste mock</button>
+        <button className="btn btn-primary" onClick={()=>alert('Saved draft (mock)')}>Save as Draft</button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## **`src/pages/transaction-list/TransactionList.jsx`**  *(Dev 4)*
+
+```jsx
+import React, { useMemo, useState } from 'react';
+import { transactions } from '../../common/mockData';
+import DataTable from '../../common/components/DataTable';
+
+export default function TransactionList() {
+  const [status, setStatus] = useState('All');
+  const rows = useMemo(()=> status==='All' ? transactions : transactions.filter(t=>t.status===status), [status]);
+  const columns = [
+    { key:'id', header:'ID' },
+    { key:'date', header:'Date' },
+    { key:'type', header:'Type' },
+    { key:'employeeId', header:'Employee' },
+    { key:'currency', header:'CCY' },
+    { key:'amount', header:'Amount' },
+    { key:'status', header:'Status' }
+  ];
+
+  return (
+    <div className="d-grid gap-3">
+      <div className="card card-shadow p-3">
+        <div className="d-flex justify-content-between align-items-center">
+          <h2 className="h5 mb-0">Transactions</h2>
+          <div className="d-flex gap-2">
+            <select className="form-select form-select-sm" value={status} onChange={e=>setStatus(e.target.value)}>
+              {['All','Draft','Pending Approval','Approved'].map(s=><option key={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        actions={(r)=>(
+          <>
+            <button className="btn btn-sm btn-outline-primary me-2" onClick={()=>alert('View ' + r.id)}>View</button>
+            <button className="btn btn-sm btn-outline-secondary me-2" onClick={()=>alert('Edit ' + r.id)}>Edit</button>
+            <button className="btn btn-sm btn-outline-danger" onClick={()=>alert('Delete (mock) ' + r.id)}>Delete</button>
+          </>
+        )}
+      />
+    </div>
+  );
+}
+```
+
+---
+
+If you want, I can now paste **Approval.jsx, PrintPreview\.jsx, and AccountBalance.jsx** so all six developer pages are complete.
+Do you want me to paste those remaining three now?
+
