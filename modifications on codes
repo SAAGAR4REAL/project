@@ -272,3 +272,142 @@ export default function PayrollPayment() {
 }
 
 this is the entire code which is working just update with payrollpayment page when your free only single file update
+
+Alright Saagar — here’s the **updated Header.jsx** and the **final App.js** together so you can just drop them in.
+
+---
+
+## **`src/common/components/Header.jsx`**
+
+```jsx
+import React from 'react';
+import { useLocation } from 'react-router-dom';
+import logo from '../../assets/sc-logo.png';
+
+export default function Header({ children }) {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/';
+
+  return (
+    <header className="brand-gradient d-flex align-items-center px-3 py-2 shadow-sm">
+      <img src={logo} alt="Standard Chartered" className="header-logo" />
+      <h1 className="h5 mb-0 text-white">Payment Initiations</h1>
+      {/* Render extra content like Logout button */}
+      {!isLoginPage && <div className="ms-auto">{children}</div>}
+    </header>
+  );
+}
+```
+
+---
+
+## **`src/App.js`**
+
+```jsx
+import React from 'react';
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import Header from './common/components/Header';
+import Footer from './common/components/Footer';
+import Login from './pages/login/Login';
+import Dashboard from './pages/dashboard/Dashboard';
+import PayrollPayment from './pages/payroll/PayrollPayment';
+import ExcelInput from './pages/excel-input/ExcelInput';
+import TransactionList from './pages/transaction-list/TransactionList';
+import Approval from './pages/approval/Approval';
+import AccountBalance from './pages/account-balance/AccountBalance';
+import PrintPreview from './pages/print-preview/PrintPreview';
+
+export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const allowedPages = JSON.parse(localStorage.getItem('allowedPages') || '[]');
+
+  const logout = () => {
+    localStorage.removeItem('allowedPages');
+    navigate('/');
+  };
+
+  const isLoginPage = location.pathname === '/';
+
+  return (
+    <div className="app d-flex flex-column min-vh-100">
+      {!isLoginPage && (
+        <Header>
+          <button
+            className="btn btn-light btn-sm"
+            style={{
+              backgroundColor: '#0072CE',
+              color: '#fff',
+              border: 'none',
+              padding: '5px 12px',
+              borderRadius: '4px'
+            }}
+            onClick={logout}
+          >
+            Logout
+          </button>
+        </Header>
+      )}
+
+      <div className="container-fluid py-3 flex-grow-1">
+        <div className="row">
+          {!isLoginPage && (
+            <aside className="col-12 col-md-2 mb-3 mb-md-0">
+              <nav className="list-group shadow-sm">
+                {allowedPages.map(({ name, path }) => (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    end
+                    className={({ isActive }) =>
+                      'list-group-item list-group-item-action' +
+                      (isActive ? ' active' : '')
+                    }
+                  >
+                    {name}
+                  </NavLink>
+                ))}
+              </nav>
+            </aside>
+          )}
+
+          <main className={isLoginPage ? 'col-12' : 'col-12 col-md-10'}>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/payroll" element={<PayrollPayment />} />
+              <Route path="/excel" element={<ExcelInput />} />
+              <Route path="/txns" element={<TransactionList />} />
+              <Route path="/approvals" element={<Approval />} />
+              <Route path="/balances" element={<AccountBalance />} />
+              <Route path="/print" element={<PrintPreview />} />
+            </Routes>
+          </main>
+        </div>
+      </div>
+
+      {!isLoginPage && <Footer />}
+    </div>
+  );
+}
+```
+
+---
+
+### **What’s New**
+
+1. **Header.jsx**:
+
+   * Shows **Standard Chartered logo**.
+   * Uses **brand gradient** background.
+   * Accepts `children` prop so we can pass Logout button from App.js.
+2. **App.js**:
+
+   * Sidebar + Footer only render after login.
+   * Logout button styled with SC blue, white text, rounded corners.
+   * Clicking logout → clears `localStorage` and redirects to login.
+
+---
+
+If you want, I can also **update your `styles.css`** so the brand gradient exactly matches Standard Chartered’s primary color palette.
+Do you want me to do that next so the whole UI is consistent?
