@@ -411,3 +411,1217 @@ export default function App() {
 
 If you want, I can also **update your `styles.css`** so the brand gradient exactly matches Standard Chartered’s primary color palette.
 Do you want me to do that next so the whole UI is consistent?
+
+
+UPDATE THIS
+
+Awesome — here’s a clean, working **end-to-end flow** with batches → submit → approve/reject → transactions (read-only + downloadable summary), plus the folder structure you asked for.
+
+I’ve kept everything in **plain React + Bootstrap + CSS** (no SCSS). You can paste these files directly into your project.
+
+---
+
+# 📁 Folder structure (additions in **bold**)
+
+```
+src/
+├─ assets/
+│   └─ sc-logo.png
+├─ common/
+│   ├─ components/
+│   │   ├─ BackToDashboard.jsx
+│   │   ├─ Footer.jsx
+│   │   ├─ Header.jsx
+│   │   └─ PrimaryButton.jsx
+│   ├─ constants.js
+│   ├─ mockData.js
+│   ├─ styles.css
+│   └─ **storage/**
+│       └─ **payrollStore.js**      # <— NEW (single source of truth for localStorage)
+├─ pages/
+│   ├─ account-balance/
+│   │   └─ AccountBalance.jsx
+│   ├─ approval/
+│   │   └─ **ApprovePayroll.jsx**   # <— NEW (approver’s page)
+│   ├─ dashboard/
+│   │   └─ Dashboard.jsx
+│   ├─ excel-input/
+│   │   └─ ExcelInput.jsx
+│   ├─ login/
+│   │   ├─ Login.jsx
+│   │   └─ login.css
+│   ├─ **manage-payroll/**
+│   │   └─ **ManagePayroll.jsx**    # <— NEW (creator’s list: Draft/Submitted/Approved/Rejected)
+│   ├─ payroll/
+│   │   └─ PayrollPayment.jsx       # <— UPDATED (create/edit + submit/draft)
+│   ├─ print-preview/
+│   │   └─ PrintPreview.jsx
+│   └─ transaction-list/
+│       └─ **TransactionList.jsx**  # <— UPDATED (readonly + download)
+├─ App.js                           # <— UPDATED (new routes)
+└─ index.js
+```
+
+---
+
+# 🧠 Shared storage helper
+
+## `src/common/storage/payrollStore.js`
+
+```js
+// Centralized helpers for payroll batches stored in localStorage
+const KEY = "payrollBatches";
+
+export function getAllBatches() {
+  return JSON.parse(localStorage.getItem(KEY) || "[]");
+}
+
+export function saveAllBatches(batches) {
+  localStorage.setItem(KEY, JSON.stringify(batches));
+}
+
+export function upsertBatch(batch) {
+  const all = getAllBatches();
+  const idx = all.findIndex(b => b.id === batch.id);
+  if (idx >= 0) all[idx] = batch; else all.push(batch);
+  saveAllBatches(all);
+  return batch;
+}
+
+export function getBatchById(id) {
+  return getAllBatches().find(b => b.id === id);
+}
+
+export function deleteBatch(id) {
+  const remaining = getAllBatches().filter(b => b.id !== id);
+  saveAllBatches(remaining);
+}
+
+export function setStatus(id, status, meta = {}) {
+  const all = getAllBatches();
+  const updated = all.map(b => b.id === id ? { ...b, status, ...meta } : b);
+  saveAllBatches(updated);
+}
+
+export function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/plain" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+```
+
+---
+
+# 🧾 Create/Edit + Submit/Draft (Maker)
+
+## `src/pages/payroll/PayrollPayment.jsx`  ✅ **UPDATED**
+
+```jsx
+import React, { useState, useEffect } from "react";
+import { accounts } from "../../common/mockData";
+import { currencies } from "../../common/constants";
+import PrimaryButton from "../../common/components/PrimaryButton";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getBatchById, upsertBatch } from "../../common/storage/payrollStore";
+
+export default function PayrollPayment() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [editBatchId, setEditBatchId] = useState(null);
+
+  const [instruction, setInstruction] = useState({
+    paymentType: "Domestic",
+    paymentCurrency: "",
+    debitAccount: "",
+    date: "",
+  });
+
+  const emptyPayment = {
+    paymentMethod: "",
+    payeeDetails: "",
+    payeeName: "",
+    bankDetails: "",
+    yourReference: "",
+    paymentReference: "",
+    amount: "",
+  };
+
+  const [payments, setPayments] = useState([emptyPayment]);
+
+  // If coming from ManagePayroll for editing
+  useEffect(() => {
+    if (location.state && location.state.batchId) {
+      const batch = getBatchById(location.state.batchId);
+      if (batch) {
+        setEditBatchId(batch.id);
+        setInstruction(batch.instruction);
+        setPayments(batch.payments);
+      }
+    }
+  }, [location.state]);
+
+  const onInstruction = (e) => {
+    const { name, value } = e.target;
+    setInstruction((p) => ({ ...p, [name]: value }));
+  };
+
+  const onPayment = (row, e) => {
+    const { name, value } = e.target;
+    setPayments((prev) => {
+      const next = [...prev];
+      next[row][name] = value;
+      return next;
+    });
+  };
+
+  const addRow = () => setPayments((prev) => [...prev, { ...emptyPayment }]);
+
+  const persist = (status) => {
+    const batch = {
+      id: editBatchId || Date.now(),
+      instruction,
+      payments,
+      status, // "Draft" | "Submitted" | "Approved" | "Rejected"
+      createdAt: editBatchId ? undefined : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    upsertBatch(batch);
+  };
+
+  const saveDraft = () => {
+    persist("Draft");
+    navigate("/manage-payroll");
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    persist("Submitted");
+    navigate("/manage-payroll");
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="card card-shadow p-4">
+        <h2 className="mb-4 text-center brand-gradient p-2 rounded">
+          {editBatchId ? "Edit Payroll Batch" : "Create Payroll Payments"}
+        </h2>
+
+        <form onSubmit={submit}>
+          {/* Instruction Details */}
+          <h4 className="mb-3">Instruction Details</h4>
+          <div className="row g-3" style={{ alignItems: "end" }}>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Payment Type</label>
+              <input
+                className="form-control"
+                name="paymentType"
+                value={instruction.paymentType}
+                onChange={onInstruction}
+                placeholder="Payment Type"
+              />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">
+                Select Currency <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select"
+                name="paymentCurrency"
+                value={instruction.paymentCurrency}
+                onChange={onInstruction}
+                required
+              >
+                <option value="">Select Currency</option>
+                {currencies.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Select Debit Account</label>
+              <select
+                className="form-select"
+                name="debitAccount"
+                value={instruction.debitAccount}
+                onChange={onInstruction}
+              >
+                <option value="">Select Debit Account</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.number}>
+                    {a.number} — {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">
+                Date <span className="text-danger">*</span>
+              </label>
+              <input
+                className="form-control"
+                type="date"
+                name="date"
+                value={instruction.date}
+                onChange={onInstruction}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Payment Details */}
+          <h4 className="mt-4 mb-3">Payment Details</h4>
+          <div className="table-responsive">
+            <table className="table table-bordered align-middle text-center mb-2">
+              <thead className="table-light">
+                <tr>
+                  <th>Payment Method</th>
+                  <th>Payee Details</th>
+                  <th>Payee Name</th>
+                  <th>Bank Details</th>
+                  <th>Your Reference</th>
+                  <th>Payment Reference</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p, i) => (
+                  <tr key={i}>
+                    <td>
+                      <select
+                        className="form-select form-select-sm"
+                        name="paymentMethod"
+                        value={p.paymentMethod}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      >
+                        <option value="">Select Method</option>
+                        <option value="Account Number">Account Number</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="payeeDetails"
+                        value={p.payeeDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="payeeName"
+                        value={p.payeeName}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="bankDetails"
+                        value={p.bankDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="yourReference"
+                        value={p.yourReference}
+                        onChange={(e) => onPayment(i, e)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="paymentReference"
+                        value={p.paymentReference}
+                        onChange={(e) => onPayment(i, e)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        type="number"
+                        name="amount"
+                        value={p.amount}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button type="button" className="btn btn-outline-secondary mb-4" onClick={addRow}>
+            + Add Payment Row
+          </button>
+
+          {/* Actions */}
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex gap-2">
+              <BackToDashboard />
+              <button type="button" className="btn btn-info" onClick={() => navigate("/manage-payroll")}>
+                Go to Manage Payroll
+              </button>
+            </div>
+            <div className="d-flex gap-2">
+              <button type="button" className="btn btn-outline-secondary" onClick={saveDraft}>
+                Save as Draft
+              </button>
+              <PrimaryButton type="submit">Submit</PrimaryButton>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# 🗂️ Manage all batches (creator view + submit from table)
+
+## `src/pages/manage-payroll/ManagePayroll.jsx`  ✅ **NEW / UPDATED**
+
+```jsx
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { getAllBatches, saveAllBatches, setStatus, deleteBatch, downloadText } from "../../common/storage/payrollStore";
+
+export default function ManagePayroll() {
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setBatches(getAllBatches());
+  }, []);
+
+  const refresh = () => setBatches(getAllBatches());
+
+  const editBatch = (batchId) => navigate("/payroll", { state: { batchId } });
+
+  const submitDraft = (batchId) => {
+    setStatus(batchId, "Submitted", { updatedAt: new Date().toISOString() });
+    refresh();
+  };
+
+  const remove = (batchId) => {
+    deleteBatch(batchId);
+    refresh();
+  };
+
+  const viewDetails = (batch) => setSelectedBatch(batch);
+  const closeModal = () => setSelectedBatch(null);
+
+  const printBatch = () => {
+    const html = document.getElementById("batch-print-section").innerHTML;
+    const w = window.open("", "_blank");
+    w.document.write(`
+      <html>
+        <head>
+          <title>Payroll Batch ${selectedBatch.id}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .brand-header { display: flex; align-items: center; gap: 10px; border-bottom: 3px solid #0072CE; padding-bottom: 10px; margin-bottom: 20px; }
+            .brand-header img { height: 50px; }
+            .brand-title { font-size: 24px; font-weight: bold; background: linear-gradient(90deg, #0072CE, #00A859); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+            h6 { background: linear-gradient(90deg, #0072CE, #00A859); color: white; padding: 5px; border-radius: 4px; margin-top: 20px; }
+            table { border: 1px solid #ddd !important; }
+            th { background-color: #f1f1f1; }
+            td, th { padding: 6px !important; border: 1px solid #ccc !important; }
+          </style>
+        </head>
+        <body>
+          <div class="brand-header">
+            <img src="/sc-logo.png" alt="Standard Chartered Logo" />
+            <span class="brand-title">Payroll Batch Summary</span>
+          </div>
+          ${html}
+        </body>
+      </html>
+    `);
+    w.document.close();
+    w.print();
+  };
+
+  const downloadSummary = (batch) => {
+    const lines = [
+      `Payroll Batch Summary — ${batch.id}`,
+      `Status: ${batch.status}`,
+      `Created: ${batch.createdAt ? new Date(batch.createdAt).toLocaleString() : "-"}`,
+      `Updated: ${batch.updatedAt ? new Date(batch.updatedAt).toLocaleString() : "-"}`,
+      `Payment Type: ${batch.instruction.paymentType}`,
+      `Currency: ${batch.instruction.paymentCurrency}`,
+      `Debit Account: ${batch.instruction.debitAccount}`,
+      `Date: ${batch.instruction.date}`,
+      "",
+      "Payments:",
+      ...batch.payments.map((p, i) => `${i + 1}. ${p.payeeName} | ${p.amount} ${batch.instruction.paymentCurrency} | ${p.bankDetails} | Ref: ${p.paymentReference || "-"}`)
+    ];
+    downloadText(`Payroll_${batch.id}_Summary.txt`, lines.join("\n"));
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Manage Payroll Batches</h2>
+        <BackToDashboard />
+      </div>
+
+      <div className="table-responsive">
+        <table className="table table-bordered text-center align-middle">
+          <thead className="table-light">
+            <tr>
+              <th>Batch ID</th>
+              <th>Status</th>
+              <th>Date Created</th>
+              <th>Payments Count</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batches.length === 0 && (
+              <tr><td colSpan="5">No payroll batches found.</td></tr>
+            )}
+            {batches.map((b) => (
+              <tr key={b.id}>
+                <td>{b.id}</td>
+                <td>
+                  <span className={
+                    "badge " + (b.status === "Approved" ? "bg-success"
+                              : b.status === "Rejected" ? "bg-danger"
+                              : b.status === "Submitted" ? "bg-warning text-dark"
+                              : "bg-secondary")
+                  }>
+                    {b.status}
+                  </span>
+                </td>
+                <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
+                <td>{b.payments.length}</td>
+                <td className="text-nowrap">
+                  <button className="btn btn-sm btn-info me-2" onClick={() => viewDetails(b)}>View</button>
+                  {b.status === "Draft" && (
+                    <>
+                      <button className="btn btn-sm btn-primary me-2" onClick={() => editBatch(b.id)}>Edit</button>
+                      <button className="btn btn-sm btn-success me-2" onClick={() => submitDraft(b.id)}>Submit</button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => remove(b.id)}>Delete</button>
+                    </>
+                  )}
+                  {(b.status === "Approved" || b.status === "Rejected") && (
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => downloadSummary(b)}>
+                      Download Summary
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Details Modal */}
+      {selectedBatch && (
+        <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Batch Details — {selectedBatch.id}</h5>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body" id="batch-print-section">
+                <h6>Instruction Details</h6>
+                <ul>
+                  <li><strong>Payment Type:</strong> {selectedBatch.instruction.paymentType}</li>
+                  <li><strong>Currency:</strong> {selectedBatch.instruction.paymentCurrency}</li>
+                  <li><strong>Debit Account:</strong> {selectedBatch.instruction.debitAccount}</li>
+                  <li><strong>Date:</strong> {selectedBatch.instruction.date}</li>
+                </ul>
+
+                <h6>Payments</h6>
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Method</th>
+                        <th>Payee Details</th>
+                        <th>Payee Name</th>
+                        <th>Bank Details</th>
+                        <th>Your Ref</th>
+                        <th>Payment Ref</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBatch.payments.map((p, idx) => (
+                        <tr key={idx}>
+                          <td>{p.paymentMethod}</td>
+                          <td>{p.payeeDetails}</td>
+                          <td>{p.payeeName}</td>
+                          <td>{p.bankDetails}</td>
+                          <td>{p.yourReference}</td>
+                          <td>{p.paymentReference}</td>
+                          <td>{p.amount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {(selectedBatch.status === "Approved" || selectedBatch.status === "Rejected") && selectedBatch.approvedAt && (
+                  <>
+                    <h6>Approval</h6>
+                    <ul>
+                      <li><strong>Decision:</strong> {selectedBatch.status}</li>
+                      <li><strong>By:</strong> {selectedBatch.approvedBy || "-"}</li>
+                      <li><strong>At:</strong> {new Date(selectedBatch.approvedAt).toLocaleString()}</li>
+                      {selectedBatch.remarks && <li><strong>Remarks:</strong> {selectedBatch.remarks}</li>}
+                    </ul>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-primary" onClick={printBatch}>Print</button>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# ✅ Approver page (acts on “Submitted”)
+
+## `src/pages/approval/ApprovePayroll.jsx`  ✅ **NEW**
+
+```jsx
+import React, { useState, useEffect } from "react";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { getAllBatches, saveAllBatches, setStatus, downloadText } from "../../common/storage/payrollStore";
+
+export default function ApprovePayroll() {
+  const [submissions, setSubmissions] = useState([]);
+  const [remarks, setRemarks] = useState({}); // track remarks per batch
+
+  const refresh = () => {
+    const all = getAllBatches();
+    setSubmissions(all.filter(b => b.status === "Submitted"));
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const decide = (batchId, decision) => {
+    const meta = {
+      approvedBy: "Approver User",
+      approvedAt: new Date().toISOString(),
+      remarks: remarks[batchId] || ""
+    };
+    setStatus(batchId, decision, meta);
+    refresh();
+  };
+
+  const onRemarkChange = (id, value) => {
+    setRemarks(prev => ({ ...prev, [id]: value }));
+  };
+
+  const downloadSummary = (batch) => {
+    const lines = [
+      `Payroll Batch Summary — ${batch.id}`,
+      `Status: ${batch.status}`,
+      `Created: ${batch.createdAt ? new Date(batch.createdAt).toLocaleString() : "-"}`,
+      `Payment Type: ${batch.instruction.paymentType}`,
+      `Currency: ${batch.instruction.paymentCurrency}`,
+      `Debit Account: ${batch.instruction.debitAccount}`,
+      `Date: ${batch.instruction.date}`,
+      "",
+      "Payments:",
+      ...batch.payments.map((p, i) => `${i + 1}. ${p.payeeName} | ${p.amount} ${batch.instruction.paymentCurrency}`)
+    ];
+    downloadText(`Payroll_${batch.id}_Summary.txt`, lines.join("\n"));
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Approve Payroll</h2>
+        <BackToDashboard />
+      </div>
+
+      {submissions.length === 0 ? (
+        <p>No payrolls awaiting approval.</p>
+      ) : (
+        <div className="table-responsive">
+          <table className="table table-bordered align-middle text-center">
+            <thead className="table-light">
+              <tr>
+                <th>Batch ID</th>
+                <th>Created</th>
+                <th>Payments</th>
+                <th>Remarks</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {submissions.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.id}</td>
+                  <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
+                  <td>{b.payments.length}</td>
+                  <td style={{ minWidth: 220 }}>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      placeholder="Optional remarks"
+                      value={remarks[b.id] || ""}
+                      onChange={(e) => onRemarkChange(b.id, e.target.value)}
+                    />
+                  </td>
+                  <td className="text-nowrap">
+                    <button className="btn btn-success btn-sm me-2" onClick={() => decide(b.id, "Approved")}>
+                      Approve
+                    </button>
+                    <button className="btn btn-danger btn-sm me-2" onClick={() => decide(b.id, "Rejected")}>
+                      Reject
+                    </button>
+                    <button className="btn btn-outline-primary btn-sm" onClick={() => downloadSummary(b)}>
+                      Download Summary
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# 📚 Transactions (read-only, shows Approved/Rejected)
+
+## `src/pages/transaction-list/TransactionList.jsx`  ✅ **UPDATED**
+
+```jsx
+import React, { useEffect, useState } from "react";
+import { getAllBatches, downloadText } from "../../common/storage/payrollStore";
+
+export default function TransactionList() {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    const all = getAllBatches();
+    setItems(all.filter(b => b.status === "Approved" || b.status === "Rejected"));
+  }, []);
+
+  const downloadSummary = (batch) => {
+    const lines = [
+      `Payroll Batch Summary — ${batch.id}`,
+      `Status: ${batch.status}`,
+      `Created: ${batch.createdAt ? new Date(batch.createdAt).toLocaleString() : "-"}`,
+      `Decision At: ${batch.approvedAt ? new Date(batch.approvedAt).toLocaleString() : "-"}`,
+      `Decision By: ${batch.approvedBy || "-"}`,
+      `Remarks: ${batch.remarks || "-"}`,
+      "",
+      `Payment Type: ${batch.instruction.paymentType}`,
+      `Currency: ${batch.instruction.paymentCurrency}`,
+      `Debit Account: ${batch.instruction.debitAccount}`,
+      `Date: ${batch.instruction.date}`,
+      "",
+      "Payments:",
+      ...batch.payments.map((p, i) =>
+        `${i + 1}. ${p.payeeName} | ${p.amount} ${batch.instruction.paymentCurrency} | ${p.bankDetails}`
+      )
+    ];
+    downloadText(`Payroll_${batch.id}_Summary.txt`, lines.join("\n"));
+  };
+
+  return (
+    <div className="container my-4">
+      <h2>Transactions</h2>
+
+      <div className="table-responsive mt-3">
+        <table className="table table-bordered align-middle text-center">
+          <thead className="table-light">
+            <tr>
+              <th>Batch ID</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Decision</th>
+              <th>Payments</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr><td colSpan="6">No transactions yet.</td></tr>
+            ) : (
+              items.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.id}</td>
+                  <td>
+                    <span className={
+                      "badge " + (b.status === "Approved" ? "bg-success" : "bg-danger")
+                    }>{b.status}</span>
+                  </td>
+                  <td>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</td>
+                  <td>
+                    {b.approvedAt ? new Date(b.approvedAt).toLocaleString() : "-"}
+                    {b.approvedBy ? ` by ${b.approvedBy}` : ""}
+                    {b.remarks ? <div className="small text-muted">“{b.remarks}”</div> : null}
+                  </td>
+                  <td>{b.payments.length}</td>
+                  <td>
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => downloadSummary(b)}>
+                      Download Summary
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {/* NOTE: everything here is read-only; no edit/delete buttons */}
+    </div>
+  );
+}
+```
+
+---
+
+# 🔀 Routes
+
+## `src/App.js`  ✅ **UPDATE these routes**
+
+```jsx
+// ...
+import ManagePayroll from './pages/manage-payroll/ManagePayroll';
+import ApprovePayroll from './pages/approval/ApprovePayroll';
+// (TransactionList is already imported as your /txns page)
+
+export default function App() {
+  // ...everything else stays the same
+
+  return (
+    // ...
+    <main className={isLoginPage ? 'col-12' : 'col-12 col-md-10'}>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        <Route path="/payroll" element={<PayrollPayment />} />
+        <Route path="/manage-payroll" element={<ManagePayroll />} />
+
+        {/* Keep your old path so the checker’s sidebar still works */}
+        <Route path="/approvals" element={<ApprovePayroll />} />
+
+        <Route path="/excel" element={<ExcelInput />} />
+        <Route path="/txns" element={<TransactionList />} />
+        <Route path="/balances" element={<AccountBalance />} />
+        <Route path="/print" element={<PrintPreview />} />
+      </Routes>
+    </main>
+    // ...
+  );
+}
+```
+
+> If your **Login.jsx** sidebar for the checker role still points to `/approvals`, you don’t have to change anything — it will now open the **ApprovePayroll** UI above.
+
+---
+
+## 👍 What you get now
+
+* Maker can **Save Draft** or **Submit** from the create page.
+* Maker can **Submit** directly from **Manage Payroll** table.
+* Approver sees only **Submitted** batches, can **Approve/Reject** with optional **remarks** and **download summary**.
+* Transactions page shows **Approved/Rejected** only, **read-only**, with **download**.
+* Centralized `payrollStore.js` keeps all localStorage logic consistent.
+
+If you want me to also **pre-add “Manage Payroll” into the maker’s allowed nav** or wire in a “role” saved at login so we show/hide pages per role automatically, I can drop that code in too.
+
+Here’s the **updated “Create Payroll” page** (aka **PayrollPayment.jsx**) that supports **Draft/Submit**, **edit existing batch**, **add/remove rows**, shows a **running total**, and saves everything to `localStorage` via the shared `payrollStore.js`.
+
+> Path: `src/pages/payroll/PayrollPayment.jsx`
+
+```jsx
+import React, { useState, useEffect, useMemo } from "react";
+import { accounts } from "../../common/mockData";
+import { currencies } from "../../common/constants";
+import PrimaryButton from "../../common/components/PrimaryButton";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getBatchById, upsertBatch } from "../../common/storage/payrollStore";
+
+export default function PayrollPayment() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ---------- Edit mode (when navigating from ManagePayroll) ----------
+  const [editBatchId, setEditBatchId] = useState(null);
+
+  // ---------- Instruction section ----------
+  const [instruction, setInstruction] = useState({
+    paymentType: "Domestic",
+    paymentCurrency: "",
+    debitAccount: "",
+    date: "",
+  });
+
+  // ---------- Payment rows ----------
+  const emptyPayment = {
+    paymentMethod: "",
+    payeeDetails: "",
+    payeeName: "",
+    bankDetails: "",
+    yourReference: "",
+    paymentReference: "",
+    amount: "",
+  };
+  const [payments, setPayments] = useState([emptyPayment]);
+
+  // Load batch if editing
+  useEffect(() => {
+    if (location.state && location.state.batchId) {
+      const batch = getBatchById(location.state.batchId);
+      if (batch) {
+        setEditBatchId(batch.id);
+        setInstruction(batch.instruction || {});
+        setPayments(batch.payments?.length ? batch.payments : [emptyPayment]);
+      }
+    }
+  }, [location.state]);
+
+  // ---------------- Handlers ----------------
+  const onInstruction = (e) => {
+    const { name, value } = e.target;
+    setInstruction((p) => ({ ...p, [name]: value }));
+  };
+
+  const onPayment = (row, e) => {
+    const { name, value } = e.target;
+    setPayments((prev) => {
+      const next = [...prev];
+      next[row][name] = value;
+      return next;
+    });
+  };
+
+  const addRow = () => setPayments((prev) => [...prev, { ...emptyPayment }]);
+
+  const removeRow = (row) =>
+    setPayments((prev) => prev.filter((_, idx) => idx !== row));
+
+  // ---------------- Derived ----------------
+  const totalAmount = useMemo(
+    () =>
+      payments.reduce((sum, p) => {
+        const n = Number(p.amount);
+        return sum + (isNaN(n) ? 0 : n);
+      }, 0),
+    [payments]
+  );
+
+  const canSubmit =
+    instruction.paymentCurrency &&
+    instruction.date &&
+    payments.length > 0 &&
+    payments.every(
+      (p) =>
+        p.paymentMethod &&
+        p.payeeDetails &&
+        p.payeeName &&
+        p.bankDetails &&
+        p.amount &&
+        Number(p.amount) > 0
+    );
+
+  // ---------------- Persist ----------------
+  const persist = (status) => {
+    const now = new Date().toISOString();
+    const batch = {
+      id: editBatchId || Date.now(),
+      instruction,
+      payments,
+      status, // "Draft" | "Submitted" | "Approved" | "Rejected"
+      createdAt: editBatchId ? undefined : now,
+      updatedAt: now,
+    };
+    upsertBatch(batch);
+  };
+
+  const saveDraft = () => {
+    persist("Draft");
+    navigate("/manage-payroll");
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    persist("Submitted");
+    navigate("/manage-payroll");
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="card card-shadow p-4">
+        <h2 className="mb-4 text-center brand-gradient p-2 rounded">
+          {editBatchId ? "Edit Payroll Batch" : "Create Payroll Payments"}
+        </h2>
+
+        <form onSubmit={submit}>
+          {/* ---------- Instruction Details ---------- */}
+          <h4 className="mb-3">Instruction Details</h4>
+
+          <div className="row g-3">
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Payment Type</label>
+              <input
+                className="form-control"
+                name="paymentType"
+                value={instruction.paymentType}
+                onChange={onInstruction}
+                placeholder="Payment Type"
+              />
+            </div>
+
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">
+                Select Currency <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select"
+                name="paymentCurrency"
+                value={instruction.paymentCurrency}
+                onChange={onInstruction}
+                required
+              >
+                <option value="">Select Currency</option>
+                {currencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Select Debit Account</label>
+              <select
+                className="form-select"
+                name="debitAccount"
+                value={instruction.debitAccount}
+                onChange={onInstruction}
+              >
+                <option value="">Select Debit Account</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.number}>
+                    {a.number} — {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">
+                Date <span className="text-danger">*</span>
+              </label>
+              <input
+                className="form-control"
+                type="date"
+                name="date"
+                value={instruction.date}
+                onChange={onInstruction}
+                required
+              />
+            </div>
+          </div>
+
+          {/* ---------- Payment Details ---------- */}
+          <div className="d-flex justify-content-between align-items-center mt-4">
+            <h4 className="mb-0">Payment Details</h4>
+            <div className="text-end">
+              <div className="small text-muted">
+                Total ({instruction.paymentCurrency || "-"})
+              </div>
+              <div className="fs-5 fw-bold">{totalAmount.toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div className="table-responsive mt-2">
+            <table className="table table-bordered align-middle text-center mb-2">
+              <thead className="table-light">
+                <tr>
+                  <th>Payment Method</th>
+                  <th>Payee Details</th>
+                  <th>Payee Name</th>
+                  <th>Bank Details</th>
+                  <th>Your Reference</th>
+                  <th>Payment Reference</th>
+                  <th style={{ width: 130 }}>Amount</th>
+                  <th style={{ width: 70 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p, i) => (
+                  <tr key={i}>
+                    <td>
+                      <select
+                        className="form-select form-select-sm"
+                        name="paymentMethod"
+                        value={p.paymentMethod}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      >
+                        <option value="">Select Method</option>
+                        <option value="Account Number">Account Number</option>
+                        {/* add more if needed */}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="payeeDetails"
+                        value={p.payeeDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="payeeName"
+                        value={p.payeeName}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="bankDetails"
+                        value={p.bankDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="yourReference"
+                        value={p.yourReference}
+                        onChange={(e) => onPayment(i, e)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="paymentReference"
+                        value={p.paymentReference}
+                        onChange={(e) => onPayment(i, e)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name="amount"
+                        value={p.amount}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => removeRow(i)}
+                        title="Remove row"
+                        disabled={payments.length === 1}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline-secondary mb-4"
+            onClick={addRow}
+          >
+            + Add Payment Row
+          </button>
+
+          {/* ---------- Actions ---------- */}
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex gap-2">
+              <BackToDashboard />
+              <button
+                type="button"
+                className="btn btn-info"
+                onClick={() => navigate("/manage-payroll")}
+              >
+                Go to Manage Payroll
+              </button>
+            </div>
+
+            <div className="d-flex gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={saveDraft}
+              >
+                Save as Draft
+              </button>
+              <PrimaryButton type="submit" disabled={!canSubmit}>
+                Submit
+              </PrimaryButton>
+            </div>
+          </div>
+
+          {!canSubmit && (
+            <div className="alert alert-warning mt-3 mb-0 py-2">
+              Please fill currency, date, and all required payment fields with a positive amount.
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+### Notes
+
+* Uses the shared helpers from `src/common/storage/payrollStore.js` (already provided).
+* After **Save as Draft** or **Submit**, it redirects to **/manage-payroll**.
+* **Submit** only enables when all required fields are valid.
+* Includes **row delete**, **running total**, and **edit mode support** (when you open a Draft from Manage Payroll).
+
+If you want this to **pre-populate currency or account** based on the logged-in user’s preferences, say the word and I’ll wire it to your login/role state.
+
