@@ -1,0 +1,143 @@
+Alright — here’s the **exact workflow** for how each developer should push their code to Azure DevOps (or GitHub if you later mirror it) so you have clean branches, no overwrites, and easy merges.
+
+I’ll break it into **steps that every dev follows** + **an example per developer**.
+
+---
+
+## **🌐 Step-by-Step Git Process (for every developer)**
+
+### **1️⃣ Clone the repository (first time only)**
+
+```bash
+git clone <repo-url>
+cd payment-initiations
+```
+
+---
+
+### **2️⃣ Switch to UI branch (base for frontend work)**
+
+```bash
+git checkout UI
+```
+
+---
+
+### **3️⃣ Pull latest UI branch updates**
+
+(Always do this before starting work)
+
+```bash
+git pull origin UI
+```
+
+---
+
+### **4️⃣ Create your feature branch**
+
+Each developer creates a **separate branch** for their module:
+
+```bash
+git checkout -b feature/<module-name>
+```
+
+Example:
+
+```bash
+git checkout -b feature/payroll
+```
+
+---
+
+### **5️⃣ Add/Edit your assigned files only**
+
+* Work **only** inside your assigned `src/pages/<module-name>/` folder.
+* Use `/src/common/` only if adding shared UI components.
+* Never touch another dev’s page.
+
+---
+
+### **6️⃣ Stage your changes**
+
+```bash
+git add .
+```
+
+Or stage only specific files:
+
+```bash
+git add src/pages/payroll/PayrollPayment.jsx
+```
+
+---
+
+### **7️⃣ Commit changes**
+
+```bash
+git commit -m "Added Payroll Payment UI page"
+```
+
+---
+
+### **8️⃣ Push to remote**
+
+```bash
+git push -u origin feature/<module-name>
+```
+
+Example:
+
+```bash
+git push -u origin feature/payroll
+```
+
+---
+
+### **9️⃣ Create a Pull Request (PR)**
+
+* Go to Azure DevOps → **Repos → Branches**.
+* Select your `feature/<module-name>` branch.
+* Click **Create pull request**.
+* Set **UI** as the target branch.
+* Assign reviewers (lead or teammate).
+
+---
+
+### **🔟 Merge after approval**
+
+* Once approved, click **Complete** to merge into UI branch.
+* Delete the `feature/<module-name>` branch after merge (keeps repo clean).
+
+---
+
+## **📋 Developer → Branch → Folder Mapping**
+
+| Developer | Feature Branch         | Folder to Edit                |
+| --------- | ---------------------- | ----------------------------- |
+| Dev1      | `feature/payroll`      | `src/pages/payroll/`          |
+| Dev2      | `feature/excel`        | `src/pages/excel-input/`      |
+| Dev3      | `feature/transactions` | `src/pages/transaction-list/` |
+| Dev4      | `feature/approvals`    | `src/pages/approval/`         |
+| Dev5      | `feature/balance`      | `src/pages/account-balance/`  |
+| Dev6      | `feature/print`        | `src/pages/print-preview/`    |
+
+---
+
+## **🚨 Important Rules**
+
+1. **Daily Sync** — Before starting work:
+
+```bash
+git checkout UI
+git pull origin UI
+git checkout feature/<your-module>
+git merge UI
+```
+
+2. **Never push directly to `UI` or `main`** — always go via feature branch + PR.
+3. **One feature branch per module per sprint** — no mixing of unrelated changes.
+
+---
+
+If you want, I can prepare a **ready “Git Command Cheat Sheet.pdf”** that you can share with your dev team so they follow this exactly without asking you again.
+Do you want me to make that?
