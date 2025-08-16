@@ -1104,3 +1104,583 @@ By **Monday**, your team should:
 
 If you want, I can also give you a **starter README.md** so your devs have this setup guide inside the repo itself.
 Do you want me to prepare that too so they don’t have to refer to our chat?
+
+
+
+
+16/08/25
+chill and update off
+
+
+Perfect 👍 here are the latest versions of those 4 files, all fully updated with everything we discussed so far.
+
+
+---
+
+📄 src/pages/payroll/PayrollPayment.jsx
+
+import React, { useState } from "react";
+import { accounts } from "../../common/mockData";
+import { currencies } from "../../common/constants";
+import PrimaryButton from "../../common/components/PrimaryButton";
+import BackToDashboard from "../../common/components/BackToDashboard";
+
+// util to generate random ref
+const generateRef = (prefix) => {
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `${prefix}-${random}`;
+};
+
+export default function PayrollPayment() {
+  const [instruction, setInstruction] = useState({
+    paymentType: "Domestic",
+    paymentCurrency: "",
+    debitAccount: "",
+    date: "",
+  });
+
+  const emptyPayment = {
+    paymentMethod: "",
+    payeeDetails: "",
+    payeeName: "",
+    bankDetails: "",
+    yourReference: "",
+    paymentReference: "",
+    amount: "",
+  };
+
+  const [payments, setPayments] = useState([emptyPayment]);
+
+  const onInstruction = (e) => {
+    const { name, value } = e.target;
+    setInstruction((p) => ({ ...p, [name]: value }));
+  };
+
+  const onPayment = (row, e) => {
+    const { name, value } = e.target;
+    setPayments((prev) => {
+      const next = [...prev];
+      next[row][name] = value;
+
+      // Auto-generate refs
+      if (name === "payeeDetails") {
+        const prefix = value.substring(0, 2).toUpperCase();
+        next[row].yourReference = generateRef(prefix);
+      }
+      if (name === "payeeDetails" || name === "amount") {
+        if (instruction.debitAccount) {
+          next[row].paymentReference = `REF-${instruction.debitAccount}-${row + 1}`;
+        }
+      }
+      return next;
+    });
+  };
+
+  const addRow = () => setPayments((prev) => [...prev, { ...emptyPayment }]);
+
+  const saveDraft = () => {
+    const stored = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    const batch = {
+      id: `BATCH-${Date.now()}`,
+      instruction,
+      payments,
+      totalAmount: payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+      accountBalanceAtSubmission: "500000",
+      status: "Draft",
+    };
+    stored.push(batch);
+    localStorage.setItem("payrollBatches", JSON.stringify(stored));
+    alert("Draft saved");
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    const stored = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    const batch = {
+      id: `BATCH-${Date.now()}`,
+      instruction,
+      payments,
+      totalAmount: payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+      accountBalanceAtSubmission: "500000",
+      status: "Submitted",
+    };
+    stored.push(batch);
+    localStorage.setItem("payrollBatches", JSON.stringify(stored));
+    alert("Payroll Submitted");
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="card card-shadow p-4">
+        <h2 className="mb-4 text-center brand-gradient p-2 rounded">
+          Payroll Payments
+        </h2>
+
+        <form onSubmit={submit}>
+          <h4 className="mb-3">Instruction Details</h4>
+          <div className="row g-3">
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Payment Type</label>
+              <input
+                className="form-control"
+                name="paymentType"
+                value={instruction.paymentType}
+                onChange={onInstruction}
+              />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Select Currency *</label>
+              <select
+                className="form-select"
+                name="paymentCurrency"
+                value={instruction.paymentCurrency}
+                onChange={onInstruction}
+                required
+              >
+                <option value="">Select Currency</option>
+                {currencies.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Select Debit Account</label>
+              <select
+                className="form-select"
+                name="debitAccount"
+                value={instruction.debitAccount}
+                onChange={onInstruction}
+              >
+                <option value="">Select Debit Account</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.number}>
+                    {a.number} — {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label fw-semibold">Date *</label>
+              <input
+                className="form-control"
+                type="date"
+                name="date"
+                value={instruction.date}
+                onChange={onInstruction}
+                required
+              />
+            </div>
+          </div>
+
+          <h4 className="mt-4 mb-3">Payment Details</h4>
+          <div className="table-responsive">
+            <table className="table table-bordered text-center">
+              <thead className="table-light">
+                <tr>
+                  <th>Payment Method</th>
+                  <th>Payee Details</th>
+                  <th>Payee Name</th>
+                  <th>Bank Details</th>
+                  <th>Your Reference</th>
+                  <th>Payment Reference</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p, i) => (
+                  <tr key={i}>
+                    <td>
+                      <select
+                        className="form-select form-select-sm"
+                        name="paymentMethod"
+                        value={p.paymentMethod}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      >
+                        <option value="">Select Method</option>
+                        <option value="Account Number">Account Number</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        className="form-select form-select-sm"
+                        name="payeeDetails"
+                        value={p.payeeDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      >
+                        <option value="">Select Payee</option>
+                        <option value="GroupStaff">Group Staff</option>
+                        <option value="Vendor">Vendor</option>
+                        <option value="Consultant">Consultant</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="payeeName"
+                        value={p.payeeName}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        name="bankDetails"
+                        value={p.bankDetails}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        value={p.yourReference}
+                        readOnly
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        value={p.paymentReference}
+                        readOnly
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control form-control-sm"
+                        type="number"
+                        name="amount"
+                        value={p.amount}
+                        onChange={(e) => onPayment(i, e)}
+                        required
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button type="button" className="btn btn-outline-secondary mb-3" onClick={addRow}>
+            + Add Payment Row
+          </button>
+
+          <div className="d-flex justify-content-between align-items-center">
+            <BackToDashboard />
+            <div className="d-flex gap-2">
+              <button type="button" className="btn btn-outline-secondary" onClick={saveDraft}>
+                Save as Draft
+              </button>
+              <PrimaryButton type="submit">Submit</PrimaryButton>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+---
+
+📄 src/pages/payroll/ManagePayroll.jsx
+
+import React, { useState, useEffect } from "react";
+
+export default function ManagePayroll() {
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    setBatches(stored);
+  }, []);
+
+  const viewDetails = (batch) => setSelectedBatch(batch);
+
+  const submitBatch = (id) => {
+    const updated = batches.map((b) =>
+      b.id === id ? { ...b, status: "Submitted" } : b
+    );
+    setBatches(updated);
+    localStorage.setItem("payrollBatches", JSON.stringify(updated));
+  };
+
+  return (
+    <div className="container my-4">
+      <h2 className="mb-3">Manage Payroll</h2>
+      <table className="table table-bordered text-center">
+        <thead className="table-light">
+          <tr>
+            <th>Batch ID</th>
+            <th>Debit Account</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {batches.map((batch) => (
+            <tr key={batch.id}>
+              <td>{batch.id}</td>
+              <td>{batch.instruction.debitAccount}</td>
+              <td>{batch.totalAmount}</td>
+              <td>{batch.status}</td>
+              <td>
+                <button
+                  className="btn btn-sm btn-primary me-2"
+                  onClick={() => viewDetails(batch)}
+                >
+                  View Details
+                </button>
+                {batch.status === "Draft" && (
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={() => submitBatch(batch.id)}
+                  >
+                    Submit
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {selectedBatch && (
+        <div className="card p-3 mt-4">
+          <h5>Payroll Batch {selectedBatch.id}</h5>
+          <table className="table table-sm table-bordered mt-3">
+            <thead>
+              <tr>
+                <th>Payee Type</th>
+                <th>Payee Name</th>
+                <th>Bank Details</th>
+                <th>Your Ref</th>
+                <th>Payment Ref</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedBatch.payments.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.payeeDetails}</td>
+                  <td>{p.payeeName}</td>
+                  <td>{p.bankDetails}</td>
+                  <td>{p.yourReference}</td>
+                  <td>{p.paymentReference}</td>
+                  <td>{p.amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+---
+
+📄 src/pages/approval/Approval.jsx
+
+import React, { useState, useEffect } from "react";
+
+export default function Approval() {
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    setBatches(stored.filter((b) => b.status === "Submitted"));
+  }, []);
+
+  const updateStatus = (id, status) => {
+    const all = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    const updated = all.map((b) =>
+      b.id === id ? { ...b, status } : b
+    );
+    localStorage.setItem("payrollBatches", JSON.stringify(updated));
+    setBatches(updated.filter((b) => b.status === "Submitted"));
+    setSelectedBatch(null);
+  };
+
+  return (
+    <div className="container my-4">
+      <h2 className="mb-3">Approve Payroll</h2>
+      <table className="table table-bordered text-center">
+        <thead className="table-light">
+          <tr>
+            <th>Batch ID</th>
+            <th>Debit Account</th>
+            <th>Total Amount</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {batches.map((batch) => (
+            <tr key={batch.id}>
+              <td>{batch.id}</td>
+              <td>{batch.instruction.debitAccount}</td>
+              <td>{batch.totalAmount}</td>
+              <td>
+                <button
+                  className="btn btn-sm btn-info"
+                  onClick={() => setSelectedBatch(batch)}
+                >
+                  Review
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {selectedBatch && (
+        <div className="card p-3 mt-4">
+          <h5>Review Batch {selectedBatch.id}</h5>
+          <p>
+            Debit Account: {selectedBatch.instruction.debitAccount} <br />
+            Balance Snapshot: {selectedBatch.accountBalanceAtSubmission}
+          </p>
+          <table className="table table-sm table-bordered mt-3">
+            <thead>
+              <tr>
+                <th>Payee Type</th>
+                <th>Payee Name</th>
+                <th>Bank Details</th>
+                <th>Your Ref</th>
+                <th>Payment Ref</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedBatch.payments.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.payeeDetails}</td>
+                  <td>{p.payeeName}</td>
+                  <td>{p.bankDetails}</td>
+                  <td>{p.yourReference}</td>
+                  <td>{p.paymentReference}</td>
+                  <td>{p.amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-success"
+              onClick={() => updateStatus(selectedBatch.id, "Approved")}
+            >
+              Approve
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => updateStatus(selectedBatch.id, "Rejected")}
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+---
+
+📄 src/pages/transaction-list/TransactionList.jsx
+
+import React, { useState, useEffect } from "react";
+
+export default function TransactionList() {
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("payrollBatches") || "[]");
+    setBatches(stored.filter((b) => b.status === "Approved" || b.status === "Rejected"));
+  }, []);
+
+  return (
+    <div className="container my-4">
+      <h2 className="mb-3">Transactions</h2>
+      <table className="table table-bordered text-center">
+        <thead className="table-light">
+          <tr>
+            <th>Batch ID</th>
+            <th>Debit Account</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {batches.map((batch) => (
+            <tr key={batch.id}>
+              <td>{batch.id}</td>
+              <td>{batch.instruction.debitAccount}</td>
+              <td>{batch.totalAmount}</td>
+              <td>{batch.status}</td>
+              <td>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setSelectedBatch(batch)}
+                >
+                  View
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {selectedBatch && (
+        <div className="card p-3 mt-4">
+          <h5>Transaction Batch {selectedBatch.id} ({selectedBatch.status})</h5>
+          <p>
+            Debit Account: {selectedBatch.instruction.debitAccount} <br />
+            Balance Snapshot: {selectedBatch.accountBalanceAtSubmission}
+          </p>
+          <table className="table table-sm table-bordered mt-3">
+            <thead>
+              <tr>
+                <th>Payee Type</th>
+                <th>Payee Name</th>
+                <th>Bank Details</th>
+                <th>Your Ref</th>
+                <th>Payment Ref</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedBatch.payments.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.payeeDetails}</td>
+                  <td>{p.payeeName}</td>
+                  <td>{p.bankDetails}</td>
+                  <td>{p.yourReference}</td>
+                  <td>{p.paymentReference}</td>
+                  <td>{p.amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+---
+
+✅ Now you have the final 4 updated files.
+They are synced with each other and keep references + statuses intact across the flow.
+
+Do you also want me to add the Download PDF Summary inside TransactionList for each Approved batch?
+
