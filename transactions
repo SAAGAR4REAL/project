@@ -1,0 +1,74 @@
+import React, { useEffect, useState } from "react";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { getAllBatches } from "../../common/storage/payrollStore";
+
+export default function TransactionList() {
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    const all = getAllBatches();
+    setTransactions(all.filter((b) => b.status === "Approved" || b.status === "Rejected"));
+  }, []);
+
+  const calculateTotalAmount = (batch) => {
+    return batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  };
+
+  return (
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Transactions</h2>
+        <BackToDashboard />
+      </div>
+
+      {transactions.length === 0 ? (
+        <p>No finalized transactions available.</p>
+      ) : (
+        <div className="table-responsive">
+          <table className="table table-bordered align-middle text-center">
+            <thead className="table-light">
+              <tr>
+                <th>Batch ID</th>
+                <th>Date</th>
+                <th>Currency</th>
+                <th>Debit Account</th>
+                <th>No. of Payments</th>
+                <th>Total Amount</th>
+                <th>Status</th>
+                <th>Approved By</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.id}</td>
+                  <td>{b.instruction.date || "-"}</td>
+                  <td>{b.instruction.paymentCurrency}</td>
+                  <td>{b.instruction.debitAccount}</td>
+                  <td>{b.payments.length}</td>
+                  <td>
+                    {calculateTotalAmount(b)} {b.instruction.paymentCurrency}
+                  </td>
+                  <td
+                    className={
+                      b.status === "Approved"
+                        ? "text-success fw-bold"
+                        : b.status === "Rejected"
+                        ? "text-danger fw-bold"
+                        : ""
+                    }
+                  >
+                    {b.status}
+                  </td>
+                  <td>{b.meta?.approvedBy || "-"}</td>
+                  <td>{b.meta?.remarks || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
