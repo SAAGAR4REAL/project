@@ -1,0 +1,60 @@
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import Login from "./pages/login/Login";
+import Dashboard from "./pages/dashboard/Dashboard";
+import PayrollPayment from "./pages/payroll/PayrollPayment";
+import ManagePayroll from "./pages/payroll/ManagePayroll";
+import ApprovePayroll from "./pages/approval/ApprovePayroll";
+import TransactionList from "./pages/transaction-list/TransactionList";
+import AccountBalance from "./pages/account-balance/AccountBalance";
+import PrintPreview from "./pages/print-preview/PrintPreview";
+
+import Header from "./common/components/Header";
+import Footer from "./common/components/Footer";
+
+// 🔒 Private route wrapper
+function PrivateRoute({ element: Component, path }) {
+  const location = useLocation();
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const allowedPages = JSON.parse(localStorage.getItem("allowedPages") || "[]");
+
+  if (!currentUser) {
+    return <Navigate to="/" replace state={{ from: location }} />;
+  }
+
+  const isAllowed = allowedPages.some((p) => p.path === path);
+  if (!isAllowed && path !== "/dashboard") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Component />;
+}
+
+export default function App() {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+
+  return (
+    <Router>
+      {currentUser && <Header currentUser={currentUser} />}
+      <div className="app-body">
+        <Routes>
+          {/* Public route */}
+          <Route path="/" element={<Login />} />
+
+          {/* Protected routes */}
+          <Route path="/dashboard" element={<PrivateRoute element={Dashboard} path="/dashboard" />} />
+          <Route path="/payroll" element={<PrivateRoute element={PayrollPayment} path="/payroll" />} />
+          <Route path="/manage-payroll" element={<PrivateRoute element={ManagePayroll} path="/manage-payroll" />} />
+          <Route path="/approvals" element={<PrivateRoute element={ApprovePayroll} path="/approvals" />} />
+          <Route path="/txns" element={<PrivateRoute element={TransactionList} path="/txns" />} />
+          <Route path="/balances" element={<PrivateRoute element={AccountBalance} path="/balances" />} />
+          <Route path="/print" element={<PrivateRoute element={PrintPreview} path="/print" />} />
+
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
+      {currentUser && <Footer currentUser={currentUser} />}
+    </Router>
+  );
+}
