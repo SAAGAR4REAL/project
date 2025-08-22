@@ -1,0 +1,17 @@
+import React from "react";
+
+export default function Footer({ currentUser }) {
+  const lastLogin = localStorage.getItem("lastLogin") || "-";
+  const lastLogout = localStorage.getItem("lastLogout") || "-";
+
+  return (
+    <footer className="scb-footer text-center p-3 mt-auto">
+      <p className="mb-1">
+        Currently logged in as: <strong>{currentUser}</strong>
+      </p>
+      <p className="mb-1">Last Login: {lastLogin}</p>
+      {lastLogout !== "-" && <p className="mb-1">Last Logout: {lastLogout}</p>}
+      <small>© 2025 Standard Chartered. All rights reserved.</small>
+    </footer>
+  );
+}
