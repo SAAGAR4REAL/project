@@ -146,3 +146,207 @@ export default function TransactionList() {
     </div>
   );
 }
+
+
+
+import React, { useState, useEffect } from "react";
+import BackToDashboard from "../../common/components/BackToDashboard";
+import { getAllBatches } from "../../common/storage/payrollStore";
+
+export default function TransactionList() {
+  const [transactions, setTransactions] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+
+  useEffect(() => {
+    // Only show Approved or Rejected transactions
+    const all = getAllBatches();
+    setTransactions(all.filter((b) => b.status === "Approved" || b.status === "Rejected"));
+  }, []);
+
+  const calculateTotalAmount = (batch) => {
+    return batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  };
+
+  const viewDetails = (batch) => setSelectedBatch(batch);
+  const closeModal = () => setSelectedBatch(null);
+
+  return (
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Transaction History</h2>
+        <BackToDashboard />
+      </div>
+
+      {transactions.length === 0 ? (
+        <p>No approved or rejected payrolls yet.</p>
+      ) : (
+        <div className="table-responsive">
+          <table className="table table-bordered align-middle text-center">
+            <thead className="table-light">
+              <tr>
+                <th>Batch ID</th>
+                <th>Status</th>
+                <th>Currency</th>
+                <th>Debit Account</th>
+                <th>Total Amount</th>
+                <th>Payments Count</th>
+                <th>Approval Info</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.id}</td>
+                  <td>
+                    <span
+                      className={
+                        "badge " +
+                        (b.status === "Approved"
+                          ? "bg-success"
+                          : "bg-danger")
+                      }
+                    >
+                      {b.status}
+                    </span>
+                  </td>
+                  <td>{b.instruction.paymentCurrency}</td>
+                  <td>{b.instruction.debitAccount}</td>
+                  <td>
+                    {calculateTotalAmount(b)} {b.instruction.paymentCurrency}
+                  </td>
+                  <td>{b.payments.length}</td>
+                  <td>
+                    {b.approvedAt ? (
+                      <>
+                        <div>
+                          <strong>By:</strong> {b.approvedBy || "-"}
+                        </div>
+                        <div>
+                          <strong>At:</strong>{" "}
+                          {new Date(b.approvedAt).toLocaleString()}
+                        </div>
+                        {b.remarks && (
+                          <div>
+                            <strong>Remarks:</strong> {b.remarks}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-info"
+                      onClick={() => viewDetails(b)}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Details Modal */}
+      {selectedBatch && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Transaction Details — {selectedBatch.id}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closeModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <h6>Instruction Details</h6>
+                <ul>
+                  <li>
+                    <strong>Currency:</strong>{" "}
+                    {selectedBatch.instruction.paymentCurrency}
+                  </li>
+                  <li>
+                    <strong>Debit Account:</strong>{" "}
+                    {selectedBatch.instruction.debitAccount}
+                  </li>
+                  <li>
+                    <strong>Date:</strong> {selectedBatch.instruction.date}
+                  </li>
+                </ul>
+
+                <h6>Payments</h6>
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Reference</th>
+                        <th>Payee Role</th>
+                        <th>Payee Name</th>
+                        <th>Account Number</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBatch.payments.map((p, idx) => (
+                        <tr key={idx}>
+                          <td>{p.reference}</td>
+                          <td>{p.payeeDetails}</td>
+                          <td>{p.payeeName}</td>
+                          <td>{p.accountNumber}</td>
+                          <td>
+                            {p.amount} {selectedBatch.instruction.paymentCurrency}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h6>Approval Info</h6>
+                <ul>
+                  <li>
+                    <strong>Status:</strong> {selectedBatch.status}
+                  </li>
+                  <li>
+                    <strong>By:</strong> {selectedBatch.approvedBy || "-"}
+                  </li>
+                  <li>
+                    <strong>At:</strong>{" "}
+                    {selectedBatch.approvedAt
+                      ? new Date(selectedBatch.approvedAt).toLocaleString()
+                      : "-"}
+                  </li>
+                  {selectedBatch.remarks && (
+                    <li>
+                      <strong>Remarks:</strong> {selectedBatch.remarks}
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
