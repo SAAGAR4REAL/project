@@ -4,6 +4,7 @@ import { getAllBatches } from "../../common/storage/payrollStore";
 
 export default function TransactionList() {
   const [transactions, setTransactions] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState(null);
 
   useEffect(() => {
     const all = getAllBatches();
@@ -37,6 +38,7 @@ export default function TransactionList() {
                 <th>Status</th>
                 <th>Approved By</th>
                 <th>Remarks</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -54,19 +56,91 @@ export default function TransactionList() {
                     className={
                       b.status === "Approved"
                         ? "text-success fw-bold"
-                        : b.status === "Rejected"
-                        ? "text-danger fw-bold"
-                        : ""
+                        : "text-danger fw-bold"
                     }
                   >
                     {b.status}
                   </td>
                   <td>{b.meta?.approvedBy || "-"}</td>
                   <td>{b.meta?.remarks || "-"}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => setSelectedBatch(b)}
+                    >
+                      View Details
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ================= MODAL ================= */}
+      {selectedBatch && (
+        <div className="modal show d-block" tabIndex="-1" role="dialog">
+          <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Batch {selectedBatch.id} — Details
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setSelectedBatch(null)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  <strong>Status:</strong> {selectedBatch.status}
+                  <br />
+                  <strong>Approved By:</strong>{" "}
+                  {selectedBatch.meta?.approvedBy || "-"}
+                  <br />
+                  <strong>Remarks:</strong>{" "}
+                  {selectedBatch.meta?.remarks || "-"}
+                </p>
+
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered text-center">
+                    <thead className="table-light">
+                      <tr>
+                        <th>#</th>
+                        <th>Payee Role</th>
+                        <th>Payee Name</th>
+                        <th>Account Number</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBatch.payments.map((p, i) => (
+                        <tr key={i}>
+                          <td>{i + 1}</td>
+                          <td>{p.payeeDetails}</td>
+                          <td>{p.payeeName}</td>
+                          <td>{p.accountNumber}</td>
+                          <td>
+                            {p.amount} {selectedBatch.instruction.paymentCurrency}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedBatch(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
