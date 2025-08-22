@@ -1,0 +1,40 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [allowedPages, setAllowedPages] = useState([]);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("allowedPages") || "[]");
+    setAllowedPages(stored);
+  }, []);
+
+  return (
+    <div className="container my-5">
+      <h2 className="mb-4">Dashboard</h2>
+
+      <div className="row g-4">
+        {allowedPages.map((p, idx) => (
+          <div key={idx} className="col-12 col-md-4">
+            <div
+              className="dashboard-card card text-center p-4 card-shadow h-100"
+              onClick={() => navigate(p.path)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="icon mb-3">
+                {p.name.includes("Payroll") && <i className="bi bi-cash-stack fs-1 text-primary"></i>}
+                {p.name.includes("Approval") && <i className="bi bi-check2-circle fs-1 text-success"></i>}
+                {p.name.includes("Transaction") && <i className="bi bi-receipt fs-1 text-warning"></i>}
+                {p.name.includes("Balance") && <i className="bi bi-bank fs-1 text-info"></i>}
+                {p.name.includes("Print") && <i className="bi bi-printer fs-1 text-dark"></i>}
+              </div>
+              <h5 className="mb-2">{p.name}</h5>
+              <p className="text-muted">Go to {p.name}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
