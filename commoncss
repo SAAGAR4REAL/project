@@ -39,3 +39,44 @@
     margin-right: 10px;
     
   }
+
+
+
+
+
+:root {
+  --brand-green: #00ef2cfd;
+  --brand-blue: #0072CE;
+  --brand-light: #E6F2F0;
+  --brand-dark: #000000;
+  --header-bg: var(--brand-blue);
+  --footer-bg: #f8f9fa;
+  --text-color: #000;
+}
+
+[data-theme="dark"] {
+  --brand-light: #1c1c1c;
+  --text-color: #eee;
+  --footer-bg: #111;
+  --header-bg: #003366;
+}
+
+body {
+  background-color: var(--brand-light);
+  color: var(--text-color);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.scb-header {
+  background: var(--header-bg);
+}
+
+.scb-footer {
+  background: var(--footer-bg);
+  color: var(--text-color);
+}
+
+.header-logo {
+  height: 40px;
+}
+
