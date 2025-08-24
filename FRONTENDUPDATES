@@ -1,0 +1,981 @@
+Awesome—here’s a **plug-and-play set of updates** you asked for. I’ve kept your structure and only replaced/added files that need changes. Copy–paste each file into your project under the same paths.
+
+---
+
+# src/common/styles.css  *(replace your common.css)*
+
+```css
+:root{
+  --brand-blue:#0072CE;
+  --brand-blue-2:#0055a4;
+  --brand-green:#00A859;
+  --brand-dark:#00172b;
+  --brand-bg:#0a2a4d;          /* page blue */
+  --brand-bg-2:#0e3561;
+  --text-on-dark:#ffffff;
+  --muted:#8fb3d9;
+  --tile-hover: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.15);
+}
+
+/* Page base */
+html,body,#root{height:100%;}
+body{
+  background: linear-gradient(180deg,var(--brand-bg),var(--brand-bg-2));
+  color:#f5f8fc;
+  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+}
+
+/* App chrome */
+.app-shell{
+  min-height:100%;
+  display:flex; flex-direction:column;
+}
+.app-main{
+  flex:1 1 auto;
+  display:flex; gap:0;
+}
+.app-content{
+  flex:1 1 auto;
+  padding:24px;
+}
+
+/* Header */
+.app-header{
+  position:sticky; top:0; z-index:1000;
+  background:linear-gradient(90deg,var(--brand-blue),var(--brand-green));
+  color:var(--text-on-dark);
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
+}
+.app-header .brand{
+  display:flex; align-items:center; gap:10px;
+}
+.header-logo{ height:36px; }
+.header-title{ font-weight:700; letter-spacing:.3px; }
+.header-crumb{
+  font-size:13px; opacity:.9;
+}
+.header-right{
+  display:flex; align-items:center; gap:10px;
+}
+.header-pill{
+  background:rgba(255,255,255,.15);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:13px;
+}
+.btn-logout{
+  border:1px solid var(--border);
+  background:transparent;
+  color:#fff;
+  border-radius:8px;
+  padding:6px 10px;
+}
+.btn-logout:hover{ background:var(--tile-hover); }
+
+/* Sidebar (hidden on dashboard) */
+.sidebar{
+  width:260px; flex:0 0 260px;
+  background:linear-gradient(180deg,var(--brand-blue),var(--brand-blue-2));
+  color:#fff; border-right:1px solid var(--border);
+  min-height:calc(100vh - 64px);
+}
+.sidebar .welcome{
+  padding:16px; border-bottom:1px solid var(--border);
+}
+.sidebar .nav{
+  padding:8px 0; margin:0; list-style:none;
+}
+.sidebar .nav-link{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; color:#fff; text-decoration:none;
+}
+.sidebar .nav-link:hover{ background:var(--tile-hover); }
+.sidebar .active{
+  background:rgba(0,0,0,.15);
+  border-left:4px solid #fff; padding-left:12px;
+}
+
+/* Dashboard tiles */
+.dashboard-heading{
+  background:rgba(255,255,255,.1);
+  border:1px solid var(--border);
+  border-radius:12px; padding:10px 14px; margin-bottom:16px;
+}
+.tiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+.tile{
+  background:rgba(255,255,255,.06); color:#fff;
+  border:1px solid var(--border); border-radius:14px;
+  padding:18px; cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.tile:hover{ transform:translateY(-3px); background:var(--tile-hover); box-shadow:0 10px 18px rgba(0,0,0,.2); }
+.tile h5{ margin:0 0 6px; }
+.tile .muted{ color:var(--muted); font-size:13px; }
+
+/* Quick stats / cards */
+.card{
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border); border-radius:12px;
+  color:#fff;
+}
+.card-header{ padding:10px 14px; border-bottom:1px solid var(--border); }
+.card-body{ padding:14px; }
+
+/* Buttons */
+.btn, .btn-sm{
+  background:var(--brand-blue);
+  border:1px solid var(--brand-blue-2);
+  color:#fff; border-radius:10px;
+}
+.btn:hover{ background:var(--brand-green); border-color:var(--brand-green); }
+.btn-outline{
+  background:transparent; border:1px solid var(--border);
+}
+.btn-danger{ background:#c0392b; border-color:#c0392b; }
+.btn-success{ background:#2ecc71; border-color:#2ecc71; }
+.btn-warning{ background:#f1c40f; border-color:#f1c40f; color:#1a1a1a; }
+
+/* Tables */
+.table{ width:100%; border-collapse:collapse; }
+.table th,.table td{ border:1px solid var(--border); padding:8px; }
+.table thead{ background:rgba(255,255,255,.08); }
+
+/* Footer */
+.app-footer{
+  background:linear-gradient(90deg,var(--brand-blue-2),var(--brand-blue));
+  color:#fff; border-top:1px solid var(--border);
+  padding:10px 16px; font-size:14px;
+}
+
+/* Login animations */
+.login-hero{
+  animation: fadeUp .6s ease both;
+}
+@keyframes fadeUp{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+.login-welcome{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:28px; z-index:2000;
+  animation: fadeUp .25s ease both;
+}
+
+/* Utility */
+.grid{ display:grid; gap:16px; }
+.grid-2{ grid-template-columns:repeat(2,1fr); }
+.grid-3{ grid-template-columns:repeat(3,1fr); }
+.badge{
+  display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px;
+  border:1px solid var(--border); background:rgba(255,255,255,.08);
+}
+```
+
+---
+
+# src/common/components/Header.jsx  *(new / replace)*
+
+```jsx
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import logo from "../../assets/sc-logo.png";
+
+export default function Header(){
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")||"null");
+  const lastLogin = localStorage.getItem("lastLogin");
+
+  // Breadcrumb: "Payment Initiations / Page"
+  const map = {
+    "/dashboard":"Dashboard",
+    "/payroll":"Create Payroll",
+    "/manage-payroll":"Manage Payroll",
+    "/approvals":"Approve Payroll",
+    "/balances":"Account Balance",
+    "/txns":"Transactions",
+    "/print":"Print Preview",
+    "/login":"Login"
+  };
+  const here = map[pathname] || "—";
+
+  const logout = () => {
+    localStorage.removeItem("allowedPages");
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("lastLogin");
+    navigate("/login");
+  };
+
+  return (
+    <header className="app-header">
+      <div className="d-flex align-items-center justify-content-between">
+        <div className="brand">
+          <img className="header-logo" src={logo} alt="SCB"/>
+          <div>
+            <div className="header-title">Payment Initiations</div>
+            <div className="header-crumb">Home / {here}</div>
+          </div>
+        </div>
+
+        <div className="header-right">
+          {currentUser && (
+            <>
+              <span className="header-pill">
+                👤 {currentUser.role} ({currentUser.username})
+              </span>
+              {lastLogin && (
+                <span className="header-pill">
+                  Last login: {new Date(lastLogin).toLocaleString()}
+                </span>
+              )}
+            </>
+          )}
+          <button className="btn-logout" onClick={logout}>Logout</button>
+        </div>
+      </div>
+    </header>
+  );
+}
+```
+
+---
+
+# src/common/components/Sidebar.jsx  *(new / replace)*
+
+```jsx
+import React from "react";
+import { NavLink } from "react-router-dom";
+
+export default function Sidebar(){
+  const allowedPages = JSON.parse(localStorage.getItem("allowedPages")||"[]");
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")||"null");
+
+  const ALL = [
+    {name:"Dashboard", path:"/dashboard", icon:"🏠"},
+    {name:"Create Payroll", path:"/payroll", icon:"💸"},
+    {name:"Manage Payroll", path:"/manage-payroll", icon:"📂"},
+    {name:"Approve Payroll", path:"/approvals", icon:"✅"},
+    {name:"Account Balance", path:"/balances", icon:"💰"},
+    {name:"Transactions", path:"/txns", icon:"📊"},
+    {name:"Print Preview", path:"/print", icon:"🖨️"},
+  ];
+
+  const allowed = new Set(allowedPages.map(p=>p.path));
+  const filtered = ALL.filter(p=>allowed.has(p.path));
+
+  return (
+    <aside className="sidebar">
+      <div className="welcome">
+        <div className="fw-bold">Welcome, {currentUser?.username}</div>
+        <div className="text-white-50" style={{fontSize:13}}>{currentUser?.role}</div>
+      </div>
+      <ul className="nav">
+        {filtered.map(item=>(
+          <li key={item.path}>
+            <NavLink to={item.path} className={({isActive}) => `nav-link ${isActive?'active':''}`}>
+              <span style={{fontSize:18}}>{item.icon}</span>
+              <span>{item.name}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+```
+
+---
+
+# src/common/components/Footer.jsx  *(new / replace)*
+
+```jsx
+import React from "react";
+
+export default function Footer(){
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")||"null");
+  return (
+    <footer className="app-footer">
+      <div className="d-flex justify-content-between align-items-center">
+        <span>Welcome, {currentUser?.username ?? "Guest"} — Standard Chartered Bank</span>
+        <span>© {new Date().getFullYear()} Standard Chartered</span>
+      </div>
+    </footer>
+  );
+}
+```
+
+---
+
+# src/common/utils/pdf.js  *(new)*
+
+```jsx
+// Minimal print-to-PDF helper (opens styled window and invokes print)
+export function openPrintWindow({ title = "Report", html }) {
+  const w = window.open("", "_blank");
+  w.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body{ font-family: Segoe UI, Arial, sans-serif; padding:24px; }
+          .brand-head{ display:flex; align-items:center; gap:12px; margin-bottom:16px; border-bottom:3px solid #0072CE; padding-bottom:10px; }
+          .brand-head img{ height:44px;}
+          .brand-title{ font-weight:700; font-size:20px; color:#0072CE;}
+          .muted{ color:#555; }
+          table{ border:1px solid #ccc !important; }
+          th,td{ border:1px solid #ddd !important; padding:6px 8px !important;}
+          .section{ margin-top:16px; }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+    </html>
+  `);
+  w.document.close();
+  w.focus();
+  w.print(); // user can save as PDF
+}
+```
+
+---
+
+# src/common/storage/payrollStore.js  *(replace with this – adds balance deduction + txns + PDFs)*
+
+```jsx
+// Simple localStorage-based store for payroll + accounts + transactions
+const KEY_BATCHES = "pi_batches";
+const KEY_TXNS    = "pi_transactions";
+const KEY_ACCTS   = "pi_accounts";
+
+// Initialize if missing
+function init(){
+  if(!localStorage.getItem(KEY_BATCHES)) localStorage.setItem(KEY_BATCHES,"[]");
+  if(!localStorage.getItem(KEY_TXNS))    localStorage.setItem(KEY_TXNS,"[]");
+  if(!localStorage.getItem(KEY_ACCTS)){
+    // seed from mock if provided globally
+    const seed = [
+      { id:"1", number:"001-123456-01", name:"Main Ops", currency:"USD", balance: 150000 },
+      { id:"2", number:"001-987654-02", name:"Payroll Pool", currency:"USD", balance: 250000 },
+      { id:"3", number:"044-555999-03", name:"AP Account", currency:"INR", balance: 9000000 },
+    ];
+    localStorage.setItem(KEY_ACCTS, JSON.stringify(seed));
+  }
+}
+init();
+
+// ---------- Helper IO ----------
+const read = k => JSON.parse(localStorage.getItem(k)||"[]");
+const write = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+
+// ---------- Batches ----------
+export function getAllBatches(){ return read(KEY_BATCHES); }
+export function getBatchById(id){ return getAllBatches().find(b=>String(b.id)===String(id)); }
+export function upsertBatch(batch){
+  const all = getAllBatches();
+  const idx = all.findIndex(b=>String(b.id)===String(batch.id));
+  if(idx>=0) all[idx] = batch; else all.unshift(batch);
+  write(KEY_BATCHES, all);
+}
+export function deleteBatch(id){
+  write(KEY_BATCHES, getAllBatches().filter(b=>String(b.id)!==String(id)));
+}
+export function setStatus(id, status, meta = {}){
+  const all = getAllBatches();
+  const idx = all.findIndex(b=>String(b.id)===String(id));
+  if(idx<0) return;
+  const batch = all[idx];
+  batch.status = status;
+  Object.assign(batch, meta);
+  batch.updatedAt = new Date().toISOString();
+
+  // When Approved → deduct and create transactions
+  if(status === "Approved"){
+    const debitAcc = batch.instruction?.debitAccount;
+    const ccy = batch.instruction?.paymentCurrency;
+    const total = (batch.payments||[]).reduce((s,p)=> s + Number(p.amount||0), 0);
+    if(debitAcc){
+      adjustAccount(debitAcc, -total);
+      const txns = getAllTransactions();
+      txns.unshift({
+        id: `TX-${Date.now()}`,
+        type: "PAYROLL",
+        batchId: batch.id,
+        account: debitAcc,
+        currency: ccy,
+        amount: total,
+        direction: "DEBIT",
+        createdAt: new Date().toISOString(),
+        items: batch.payments
+      });
+      write(KEY_TXNS, txns);
+    }
+  }
+  write(KEY_BATCHES, all);
+}
+
+// ---------- Accounts ----------
+export function getAccounts(){ return read(KEY_ACCTS); }
+export function getAccountByNumber(num){ return getAccounts().find(a=>a.number===num); }
+export function adjustAccount(number, delta){
+  const accts = getAccounts();
+  const idx = accts.findIndex(a=>a.number===number);
+  if(idx<0) return;
+  accts[idx].balance = Number(accts[idx].balance||0) + Number(delta||0);
+  write(KEY_ACCTS, accts);
+}
+
+// ---------- Transactions ----------
+export function getAllTransactions(){ return read(KEY_TXNS); }
+export function getTransactionsForAccount(number){
+  return getAllTransactions().filter(t=>t.account===number);
+}
+
+// ---------- Generic download text (legacy) ----------
+export function downloadText(filename, content){
+  const blob = new Blob([content], {type: "text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+```
+
+---
+
+# src/pages/account-balance/AccountBalance.jsx  *(replace – functional, with PDF)*
+
+```jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { getAccounts, getTransactionsForAccount } from "../../common/storage/payrollStore";
+import { openPrintWindow } from "../../common/utils/pdf";
+
+export default function AccountBalance(){
+  const [accounts, setAccounts] = useState([]);
+  const [selected, setSelected] = useState("");
+  const [txns, setTxns] = useState([]);
+
+  useEffect(()=>{
+    setAccounts(getAccounts());
+  },[]);
+
+  useEffect(()=>{
+    if(selected){
+      setTxns(getTransactionsForAccount(selected));
+    }else setTxns([]);
+  },[selected]);
+
+  const acct = useMemo(()=> accounts.find(a=>a.number===selected), [accounts, selected]);
+
+  const downloadPDF = () => {
+    if(!acct) return;
+    const rows = txns.map((t,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${t.id}</td>
+        <td>${new Date(t.createdAt).toLocaleString()}</td>
+        <td>${t.type}</td>
+        <td>${t.direction}</td>
+        <td>${t.amount} ${t.currency}</td>
+      </tr>
+    `).join("");
+
+    openPrintWindow({
+      title:`Statement_${acct.number}`,
+      html: `
+        <div class="brand-head">
+          <img src="./assets/sc-logo.png" />
+          <div>
+            <div class="brand-title">Standard Chartered — Account Statement</div>
+            <div class="muted">${acct.number} &middot; ${acct.name}</div>
+          </div>
+        </div>
+        <div>Currency: <b>${acct.currency}</b> &nbsp; | &nbsp; Current Balance: <b>${acct.balance}</b></div>
+        <div class="section">
+          <table class="table table-sm">
+            <thead><tr><th>#</th><th>Txn ID</th><th>Date/Time</th><th>Type</th><th>Dir</th><th>Amount</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="6">No transactions</td></tr>`}</tbody>
+          </table>
+        </div>
+      `
+    });
+  };
+
+  return (
+    <div className="container">
+      <div className="dashboard-heading">
+        <strong>Account Balances</strong>
+      </div>
+
+      <div className="grid grid-3">
+        <div className="card">
+          <div className="card-header">Select Account</div>
+          <div className="card-body">
+            <select className="form-select" value={selected} onChange={e=>setSelected(e.target.value)}>
+              <option value="">Choose...</option>
+              {accounts.map(a=>(
+                <option key={a.id} value={a.number}>{a.number} — {a.name}</option>
+              ))}
+            </select>
+            {acct && (
+              <div className="mt-3">
+                <div><b>Account:</b> {acct.number}</div>
+                <div><b>Name:</b> {acct.name}</div>
+                <div><b>Currency:</b> {acct.currency}</div>
+                <div><b>Current Balance:</b> {acct.balance}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{gridColumn:"span 2"}}>
+          <div className="card-header d-flex justify-content-between align-items-center">
+            <span>Transactions</span>
+            <button className="btn btn-sm" onClick={downloadPDF}>Download PDF</button>
+          </div>
+          <div className="card-body" style={{overflow:auto}}>
+            <table className="table">
+              <thead>
+                <tr><th>#</th><th>Txn ID</th><th>Date/Time</th><th>Type</th><th>Dir</th><th>Amount</th></tr>
+              </thead>
+              <tbody>
+                {txns.length===0 && <tr><td colSpan="6">No transactions for this account.</td></tr>}
+                {txns.map((t,i)=>(
+                  <tr key={t.id}>
+                    <td>{i+1}</td>
+                    <td>{t.id}</td>
+                    <td>{new Date(t.createdAt).toLocaleString()}</td>
+                    <td>{t.type}</td>
+                    <td>{t.direction}</td>
+                    <td>{t.amount} {t.currency}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# src/pages/approval/Approval.jsx  *(only change: Re-uses setStatus that now deducts balance + PDF still works)*
+
+*(Your previous ApprovePayroll works; keep it. If you want its “Download Summary” also as PDF, swap to `openPrintWindow` similar to AccountBalance.)*
+
+Example change in your existing file (replace `downloadSummary` function):
+
+```jsx
+import { openPrintWindow } from "../../common/utils/pdf";
+
+// ...
+const downloadSummary = (batch) => {
+  const payments = batch.payments.map((p,i)=>`
+    <tr><td>${i+1}</td><td>${p.payeeName}</td><td>${p.accountNumber||p.bankDetails||"-"}</td><td>${p.amount} ${batch.instruction.paymentCurrency}</td></tr>
+  `).join("");
+
+  openPrintWindow({
+    title:`Payroll_${batch.id}_Summary`,
+    html: `
+      <div class="brand-head">
+        <img src="./assets/sc-logo.png" />
+        <div>
+          <div class="brand-title">Standard Chartered — Payroll Batch Summary</div>
+          <div class="muted">Batch: ${batch.id} &nbsp; | &nbsp; Status: ${batch.status}</div>
+        </div>
+      </div>
+      <div><b>Debit Account:</b> ${batch.instruction.debitAccount} &nbsp; | &nbsp; <b>Currency:</b> ${batch.instruction.paymentCurrency} &nbsp; | &nbsp; <b>Date:</b> ${batch.instruction.date}</div>
+      <div class="section">
+        <table class="table table-sm">
+          <thead><tr><th>#</th><th>Payee</th><th>Account/Bank</th><th>Amount</th></tr></thead>
+          <tbody>${payments}</tbody>
+        </table>
+      </div>
+    `
+  });
+};
+```
+
+---
+
+# src/pages/transaction-list/TransactionList.jsx  *(updated to reflect new store)*
+
+```jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { getAllTransactions } from "../../common/storage/payrollStore";
+import { openPrintWindow } from "../../common/utils/pdf";
+
+export default function TransactionList(){
+  const [txns, setTxns] = useState([]);
+  const [q, setQ] = useState("");
+
+  useEffect(()=>{ setTxns(getAllTransactions()); },[]);
+
+  const filtered = useMemo(()=> {
+    const s = q.trim().toLowerCase();
+    if(!s) return txns;
+    return txns.filter(t => Object.values(t).join(" ").toLowerCase().includes(s));
+  }, [q, txns]);
+
+  const pdf = () => {
+    const rows = filtered.map((t,i)=>`
+      <tr>
+        <td>${i+1}</td><td>${t.id}</td><td>${t.account}</td><td>${t.direction}</td><td>${t.amount} ${t.currency}</td><td>${new Date(t.createdAt).toLocaleString()}</td>
+      </tr>`).join("");
+    openPrintWindow({
+      title:"Transactions",
+      html: `
+        <div class="brand-head">
+          <img src="./assets/sc-logo.png" />
+          <div><div class="brand-title">Standard Chartered — Transactions</div></div>
+        </div>
+        <table class="table table-sm"><thead><tr><th>#</th><th>Txn</th><th>Account</th><th>Direction</th><th>Amount</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table>
+      `
+    });
+  };
+
+  return (
+    <div className="container">
+      <div className="d-flex justify-content-between align-items-center dashboard-heading">
+        <strong>Transactions</strong>
+        <div className="d-flex gap-2">
+          <input className="form-control" placeholder="Search…" value={q} onChange={e=>setQ(e.target.value)} />
+          <button className="btn btn-sm" onClick={pdf}>Download PDF</button>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-body" style={{overflow:auto}}>
+          <table className="table">
+            <thead><tr><th>#</th><th>Txn</th><th>Account</th><th>Direction</th><th>Amount</th><th>Date</th></tr></thead>
+            <tbody>
+              {filtered.length===0 && <tr><td colSpan="6">No transactions.</td></tr>}
+              {filtered.map((t,i)=>(
+                <tr key={t.id}>
+                  <td>{i+1}</td><td>{t.id}</td><td>{t.account}</td><td>{t.direction}</td><td>{t.amount} {t.currency}</td><td>{new Date(t.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# src/pages/dashboard/Dashboard.jsx  *(replace – filled with stats + quick actions; sidebar hidden on dashboard via layout below)*
+
+```jsx
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAllBatches, getAccounts, getAllTransactions } from "../../common/storage/payrollStore";
+
+export default function Dashboard(){
+  const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")||"null");
+  const allowedPages = JSON.parse(localStorage.getItem("allowedPages")||"[]");
+  const [batches, setBatches] = useState([]);
+  const [accts, setAccts]   = useState([]);
+  const [txns, setTxns]     = useState([]);
+
+  // fetch data
+  useEffect(()=>{
+    setBatches(getAllBatches());
+    setAccts(getAccounts());
+    setTxns(getAllTransactions());
+  },[]);
+
+  // KPIs
+  const kpi = useMemo(()=>{
+    const submitted = batches.filter(b=>b.status==="Submitted").length;
+    const approved  = batches.filter(b=>b.status==="Approved").length;
+    const rejected  = batches.filter(b=>b.status==="Rejected").length;
+    const totalPay  = batches.reduce((s,b)=> s + (b.payments||[]).reduce((x,p)=>x+Number(p.amount||0),0),0);
+    return {submitted, approved, rejected, totalPay};
+  },[batches]);
+
+  // Tiny chart (no deps)
+  const canvasRef = useRef(null);
+  useEffect(()=>{
+    if(!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    const byMonth = Array(6).fill(0);
+    txns.forEach(t=>{
+      const d = new Date(t.createdAt);
+      const idx = (new Date().getMonth() - d.getMonth() + 12) % 12; // rough last months
+      if(idx<6) byMonth[5-idx] += Number(t.amount||0);
+    });
+    const W = canvasRef.current.width = canvasRef.current.offsetWidth;
+    const H = canvasRef.current.height = 160;
+    ctx.clearRect(0,0,W,H);
+    const max = Math.max(1, ...byMonth);
+    const bw = W / (byMonth.length*1.6);
+    byMonth.forEach((v,i)=>{
+      const x = (i+1)* (W/(byMonth.length+1));
+      const h = (v/max)*(H-30);
+      ctx.fillStyle = "#8fd0ff";
+      ctx.fillRect(x-bw/2, H-h-10, bw, h);
+      ctx.fillStyle = "#d8ecff";
+      ctx.font = "12px Segoe UI";
+      ctx.fillText(v.toFixed(0), x-12, H-h-16);
+    });
+  },[txns]);
+
+  const quickActions = allowedPages; // uses same list
+  const go = (p)=> navigate(p.path);
+
+  return (
+    <div className="container">
+      <div className="dashboard-heading">
+        <div><strong>Welcome, {currentUser?.username}</strong> — {currentUser?.role}</div>
+      </div>
+
+      <div className="grid grid-3">
+        <div className="card">
+          <div className="card-header">Quick Stats</div>
+          <div className="card-body">
+            <div>Submitted: <span className="badge">{kpi.submitted}</span></div>
+            <div>Approved: <span className="badge">{kpi.approved}</span></div>
+            <div>Rejected: <span className="badge">{kpi.rejected}</span></div>
+            <div>Total Payroll Value: <span className="badge">{kpi.totalPay}</span></div>
+          </div>
+        </div>
+
+        <div className="card" style={{gridColumn:"span 2"}}>
+          <div className="card-header">Payments (Last 6 periods)</div>
+          <div className="card-body">
+            <canvas ref={canvasRef} style={{width:"100%", height:160}} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 tiles">
+        {quickActions.map(p=>(
+          <div className="tile" key={p.path} onClick={()=>go(p)}>
+            <h5>{p.name}</h5>
+            <div className="muted">Go to {p.name}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+# src/pages/login/Login.jsx  *(replace – animated + friendly roles + welcome overlay)*
+
+```jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PrimaryButton from '../../common/components/PrimaryButton'; // if you use it; else replace with <button>
+import './login.css';
+import logo from './sc-logo.png';
+
+const roleMap = { maker:"Creator", checker:"Approver", auditor:"Viewer" };
+
+const userAccess = {
+  maker: {
+    password: 'maker123',
+    pages: [
+      { name: 'Create Payroll', path: '/payroll' },
+      { name: 'Manage Payroll', path: '/manage-payroll' },
+      { name: 'Transactions', path: '/txns' },
+    ],
+  },
+  checker: {
+    password: 'checker123',
+    pages: [
+      { name: 'Approve Payroll', path: '/approvals' },
+      { name: 'Account Balance', path: '/balances' },
+      { name: 'Transactions', path: '/txns' },
+    ],
+  },
+  auditor: {
+    password: 'audit123',
+    pages: [
+      { name: 'Print Preview', path: '/print' },
+      { name: 'Transactions', path: '/txns' },
+    ],
+  },
+};
+
+export default function Login(){
+  const [username,setUsername] = useState('');
+  const [pwd,setPwd] = useState('');
+  const [error,setError] = useState('');
+  const [overlay,setOverlay] = useState('');
+  const navigate = useNavigate();
+
+  const submit = (e)=>{
+    e.preventDefault();
+    const key = username.trim().toLowerCase();
+    const user = userAccess[key];
+    if(user && user.password===pwd){
+      const userObj = { username:key, role:roleMap[key] };
+      localStorage.setItem("currentUser", JSON.stringify(userObj));
+      localStorage.setItem("allowedPages", JSON.stringify(user.pages));
+      localStorage.setItem("lastLogin", new Date().toISOString());
+      setOverlay(`Welcome, ${userObj.role} (${userObj.username})`);
+      setTimeout(()=> navigate("/dashboard"), 900);
+    }else{
+      setError("Invalid username or password");
+    }
+  };
+
+  return (
+    <>
+      {overlay && <div className="login-welcome">{overlay}</div>}
+      <div className="container" style={{maxWidth:980, marginTop:60}}>
+        <div className="d-flex align-items-center justify-content-center login-hero" style={{gap:18}}>
+          <img src={logo} alt="SCB" style={{height:56}}/>
+          <h2>Payment Initiations</h2>
+        </div>
+
+        <div className="card mt-3" style={{maxWidth:520, margin:"0 auto"}}>
+          <div className="card-body">
+            <h4 className="mb-2">Sign in</h4>
+            <p className="text-white-50" style={{marginTop:-6}}>maker / checker / auditor</p>
+            {error && <div className="alert alert-danger">{error}</div>}
+            <form onSubmit={submit}>
+              <div className="mb-2">
+                <label className="form-label">User ID</label>
+                <input className="form-control" value={username} onChange={e=>setUsername(e.target.value)} />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Password</label>
+                <input type="password" className="form-control" value={pwd} onChange={e=>setPwd(e.target.value)} />
+              </div>
+              <button className="btn w-100">Sign In</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+```
+
+---
+
+# src/App.js  *(replace – shows Sidebar only on functional pages, not on dashboard/login)*
+
+```jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import Header from "./common/components/Header";
+import Footer from "./common/components/Footer";
+import Sidebar from "./common/components/Sidebar";
+
+import Login from "./pages/login/Login";
+import Dashboard from "./pages/dashboard/Dashboard";
+import PayrollPayment from "./pages/payroll/PayrollPayment";
+import ManagePayroll from "./pages/payroll/ManagePayroll";
+import ApprovePayroll from "./pages/approval/Approval";
+import TransactionList from "./pages/transaction-list/TransactionList";
+import AccountBalance from "./pages/account-balance/AccountBalance";
+import PrintPreview from "./pages/print-preview/PrintPreview";
+
+function ProtectedRoute({ children, allowedRoles }){
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if(!currentUser) return <Navigate to="/login" replace />;
+  if(allowedRoles && !allowedRoles.map(r=>r.toLowerCase()).includes(currentUser.role.toLowerCase()))
+    return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+function Layout({ children }){
+  const { pathname } = useLocation();
+  const hideSidebar = pathname==="/login" || pathname==="/dashboard";
+  return (
+    <div className="app-shell">
+      <Header />
+      <div className="app-main">
+        {!hideSidebar && <Sidebar />}
+        <main className="app-content">{children}</main>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+export default function App(){
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={
+          <Layout><Login/></Layout>
+        } />
+        <Route path="/dashboard" element={
+          <Layout><Dashboard/></Layout>
+        } />
+
+        {/* Creator (maker) */}
+        <Route path="/payroll" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Creator"]}><PayrollPayment/></ProtectedRoute>
+          </Layout>
+        } />
+        <Route path="/manage-payroll" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Creator"]}><ManagePayroll/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Approver (checker) */}
+        <Route path="/approvals" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Approver"]}><ApprovePayroll/></ProtectedRoute>
+          </Layout>
+        } />
+        <Route path="/balances" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Approver"]}><AccountBalance/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Viewer (auditor) */}
+        <Route path="/print" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Viewer"]}><PrintPreview/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Shared */}
+        <Route path="/txns" element={<Layout><TransactionList/></Layout>} />
+      </Routes>
+    </Router>
+  );
+}
+```
+
+---
+
+### Notes / What’s covered
+
+* **Dashboard upgraded** with KPIs, tiny chart & quick actions; **uniform styling**.
+* **Header** shows *current user, role (Creator/Approver/Viewer), last login* and breadcrumb.
+* **Balances** page now **reflects deductions** after Approvals and can **download PDF** statement.
+* **Approval** page can **download PDF** summaries (you can apply the shown snippet).
+* **Transactions** page shows all txns + **PDF**.
+* **All PDFs**: brand logo + styled via `openPrintWindow`.
+* **Footer**: “Welcome, user — Standard Chartered Bank”.
+* **Sidebar**: shows only on functional pages, matches header colors, **hidden on dashboard**.
+* **Body**: blue background matching header/footer.
+* **Login**: animated welcome overlay + role mapping and uniform buttons.
+* **Continuity**: unified colors, buttons, cards, spacing.
+
+If you want, I can also patch your **ManagePayroll** and **PayrollPayment** to add **PDF preview** buttons the same way (one-liners using `openPrintWindow`).
