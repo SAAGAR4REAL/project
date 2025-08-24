@@ -38,3 +38,60 @@ export default function Dashboard() {
     </div>
   );
 }
+
+UPDATED Dashboard.jsx
+
+// src/pages/dashboard/Dashboard.jsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const allowedPages = JSON.parse(localStorage.getItem("allowedPages")) || [];
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+  const [lastLogin, setLastLogin] = useState(null);
+
+  useEffect(() => {
+    const loginTime = localStorage.getItem("lastLogin");
+    if (loginTime) setLastLogin(new Date(loginTime).toLocaleString());
+  }, []);
+
+  const handleNavigate = (path) => {
+    navigate(path);
+  };
+
+  return (
+    <div className="container my-4">
+      <h2 className="mb-4 brand-gradient p-2 rounded text-white">
+        Dashboard
+      </h2>
+      <p>
+        Welcome back, <strong>{currentUser.username}</strong> ({currentUser.role})
+      </p>
+      {lastLogin && <p>Last login: {lastLogin}</p>}
+
+      <div className="row g-4">
+        {allowedPages.map((page) => (
+          <div className="col-md-4" key={page.path}>
+            <div
+              className="card card-shadow text-center p-4 dashboard-tile brand-gradient"
+              style={{
+                cursor: "pointer",
+                borderRadius: "12px",
+                color: "white",
+              }}
+              onClick={() => handleNavigate(page.path)}
+            >
+              <h5 className="fw-bold">{page.name}</h5>
+              <p className="mb-0">Navigate to {page.name}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+
+
