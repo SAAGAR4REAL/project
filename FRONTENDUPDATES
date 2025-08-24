@@ -1302,3 +1302,788 @@ export default function AccountBalance() {
   );
 }
 
+
+
+
+Got it 👍
+That’s because right now your PayrollPayment → Approvals → AccountBalance flow isn’t actually updating balances — it only stores payments in batches. Let me explain and then I’ll give you the fix:
+
+
+---
+
+🔎 Current Situation
+
+PayrollPayment.jsx → creates a batch and saves it in payrollStore.
+
+Approvals.jsx → sets status Approved/Rejected.
+
+AccountBalance.jsx → is just showing static accounts from mockData.js.
+👉 No deduction is linked to the Approved payments.
+
+
+
+---
+
+✅ What We Need To Do
+
+1. Update account balances when a batch is approved.
+
+Subtract total amount from the selected Debit Account.
+
+Save the transaction history for that account.
+
+
+
+2. Modify accountBalanceStore.js to:
+
+Store balances in localStorage.
+
+Track transactions (Approved batches).
+
+
+
+3. Update Approval.jsx so that when a batch is approved:
+
+Deduct from balance.
+
+Push transaction into account history.
+
+
+
+4. Update AccountBalance.jsx to:
+
+Fetch balances from storage.
+
+Show transactions for the selected account.
+
+Enable PDF download with logo + metadata.
+
+
+
+
+
+---
+
+🔧 Step 1: Create accountBalanceStore.js (in /src/common/storage/)
+
+// src/common/storage/accountBalanceStore.js
+const BALANCE_KEY = "accounts_data";
+
+// Initialize with mock accounts if not present
+export function initAccounts(accounts) {
+  if (!localStorage.getItem(BALANCE_KEY)) {
+    localStorage.setItem(BALANCE_KEY, JSON.stringify(accounts));
+  }
+}
+
+export function getAccounts() {
+  return JSON.parse(localStorage.getItem(BALANCE_KEY)) || [];
+}
+
+export function updateAccountBalance(accountNumber, amount, txn) {
+  const accounts = getAccounts();
+  const accIndex = accounts.findIndex(a => a.number === accountNumber);
+  if (accIndex !== -1) {
+    accounts[accIndex].balance =
+      Number(accounts[accIndex].balance) - Number(amount);
+
+    // Push transaction
+    if (!accounts[accIndex].transactions) accounts[accIndex].transactions = [];
+    accounts[accIndex].transactions.push({
+      ...txn,
+      date: new Date().toISOString(),
+    });
+
+    localStorage.setItem(BALANCE_KEY, JSON.stringify(accounts));
+  }
+}
+
+
+---
+
+🔧 Step 2: Update Approval.jsx
+
+In confirmDecision after approving a batch:
+
+import { updateAccountBalance } from "../../common/storage/accountBalanceStore";
+
+const confirmDecision = () => {
+  if (enteredPasscode === APPROVER_PASSCODE) {
+    const { batchId, decision } = pendingDecision;
+    const batch = submissions.find(b => b.id === batchId);
+
+    if (decision === "Approved") {
+      const total = batch.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+      updateAccountBalance(batch.instruction.debitAccount, total, {
+        type: "Payroll Payment",
+        batchId,
+        amount: total,
+        status: "Approved"
+      });
+    }
+
+    const meta = {
+      approvedBy: "Approver User",
+      approvedAt: new Date().toISOString(),
+      remarks: remarks[batchId] || "",
+    };
+    setStatus(batchId, decision, meta);
+    refresh();
+    setMessage(`Payroll batch ${decision} successfully!`);
+    setShowPasscodeModal(false);
+  } else {
+    setMessage("❌ Incorrect passcode. Try again.");
+  }
+};
+
+
+---
+
+🔧 Step 3: Update AccountBalance.jsx
+
+Replace your static accounts fetch with:
+
+import { getAccounts } from "../../common/storage/accountBalanceStore";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import logo from "../../assets/sc-logo.png";
+
+export default function AccountBalance() {
+  const [accounts, setAccounts] = useState([]);
+
+  useEffect(() => {
+    setAccounts(getAccounts());
+  }, []);
+
+  const downloadStatement = (account) => {
+    const doc = new jsPDF();
+    doc.addImage(logo, "PNG", 10, 10, 30, 15);
+    doc.setFontSize(16);
+    doc.text("Account Statement", 50, 20);
+    doc.setFontSize(12);
+    doc.text(`Account: ${account.number} (${account.name})`, 10, 40);
+    doc.text(`Balance: ${account.balance}`, 10, 50);
+
+    autoTable(doc, {
+      startY: 60,
+      head: [["Date", "Type", "Batch ID", "Amount", "Status"]],
+      body: (account.transactions || []).map(t => [
+        new Date(t.date).toLocaleString(),
+        t.type,
+        t.batchId,
+        t.amount,
+        t.status,
+      ]),
+    });
+
+    doc.save(`Account_${account.number}_Statement.pdf`);
+  };
+
+
+---
+
+🔧 Step 4: Initialize Accounts
+
+In your index.js or App.js:
+
+import { initAccounts } from "./common/storage/accountBalanceStore";
+import { accounts } from "./common/mockData";
+
+initAccounts(accounts);
+
+
+---
+
+👉 With this:
+
+When a batch is approved → account balance is deducted.
+
+Transaction is saved in account history.
+
+AccountBalance shows updated balance + downloadable PDF statement.
+
+
+
+---
+
+Do you want me to also auto-update the Dashboard quick stats (balances + last transactions) with this new account balance data?
+
+Perfect 🚀
+
+Let’s wire Dashboard Quick Stats to the new account balances + transactions so it feels alive.
+
+
+---
+
+🔧 Step 1: Update Dashboard.jsx
+
+We’ll fetch balances + last transactions from our new accountBalanceStore.
+
+// src/pages/Dashboard.jsx
+import React, { useEffect, useState } from "react";
+import { getAccounts } from "../common/storage/accountBalanceStore";
+import { Card, Row, Col } from "react-bootstrap";
+
+export default function Dashboard() {
+  const [accounts, setAccounts] = useState([]);
+
+  useEffect(() => {
+    setAccounts(getAccounts());
+  }, []);
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const recentTxns = accounts.flatMap(acc =>
+    (acc.transactions || []).map(t => ({ ...t, acc: acc.number }))
+  )
+  .sort((a, b) => new Date(b.date) - new Date(a.date))
+  .slice(0, 5);
+
+  return (
+    <div className="container-fluid my-4">
+      <h2 className="mb-4">Dashboard</h2>
+
+      {/* Quick Stats */}
+      <Row className="mb-4">
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Total Balance</h5>
+            <h3 className="text-success">{totalBalance.toLocaleString()} USD</h3>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Accounts</h5>
+            <h3>{accounts.length}</h3>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Transactions</h5>
+            <h3>{recentTxns.length}</h3>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Recent Transactions */}
+      <Card className="card-shadow p-3">
+        <h5 className="mb-3">Recent Transactions</h5>
+        {recentTxns.length === 0 ? (
+          <p>No transactions yet.</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-sm table-bordered text-center">
+              <thead className="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th>Batch ID</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTxns.map((t, i) => (
+                  <tr key={i}>
+                    <td>{new Date(t.date).toLocaleString()}</td>
+                    <td>{t.acc}</td>
+                    <td>{t.type}</td>
+                    <td>{t.batchId}</td>
+                    <td>{t.amount}</td>
+                    <td>
+                      <span
+                        className={
+                          "badge " +
+                          (t.status === "Approved"
+                            ? "bg-success"
+                            : t.status === "Rejected"
+                            ? "bg-danger"
+                            : "bg-secondary")
+                        }
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+
+---
+
+🔧 Step 2: Style Updates (in common.css)
+
+/* Quick stats cards */
+.card-shadow h3 {
+  font-weight: bold;
+  margin: 0;
+}
+
+
+---
+
+🖼️ What You Get
+
+Quick Stats Row:
+
+✅ Total Balance across all accounts
+
+✅ Number of Accounts
+
+✅ Number of Transactions (recent)
+
+
+Recent Transactions Table (5 most recent across accounts).
+
+
+
+---
+
+👉 Next Step: Do you also want me to integrate graphical charts (pie/bar/line using Chart.js) in this Dashboard so balances + transactions are visual, or keep it only as cards + table?
+
+
+
+
+
+Nice 😎 — let’s level it up with Chart.js graphs inside the dashboard.
+
+
+---
+
+🔧 Step 1: Install Chart.js & React wrapper
+
+Run this in your project:
+
+npm install chart.js react-chartjs-2
+
+
+---
+
+🔧 Step 2: Update Dashboard.jsx
+
+We’ll add:
+
+📊 Pie chart for balances distribution across accounts
+
+📈 Bar chart for transaction amounts by account
+
+
+// src/pages/Dashboard.jsx
+import React, { useEffect, useState } from "react";
+import { getAccounts } from "../common/storage/accountBalanceStore";
+import { Card, Row, Col } from "react-bootstrap";
+import { Pie, Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+} from "chart.js";
+
+ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale, LinearScale, BarElement);
+
+export default function Dashboard() {
+  const [accounts, setAccounts] = useState([]);
+
+  useEffect(() => {
+    setAccounts(getAccounts());
+  }, []);
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const recentTxns = accounts
+    .flatMap(acc =>
+      (acc.transactions || []).map(t => ({ ...t, acc: acc.number }))
+    )
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
+
+  // 📊 Pie Chart Data for Balances
+  const balanceData = {
+    labels: accounts.map(a => a.number),
+    datasets: [
+      {
+        data: accounts.map(a => a.balance),
+        backgroundColor: ["#0072CE", "#00A859", "#FFC107", "#FF5733", "#6F42C1"],
+      },
+    ],
+  };
+
+  // 📈 Bar Chart Data for Transactions
+  const txnData = {
+    labels: accounts.map(a => a.number),
+    datasets: [
+      {
+        label: "Total Transactions (Amount)",
+        data: accounts.map(a =>
+          (a.transactions || []).reduce((sum, t) => sum + Number(t.amount), 0)
+        ),
+        backgroundColor: "#0072CE",
+      },
+    ],
+  };
+
+  return (
+    <div className="container-fluid my-4">
+      <h2 className="mb-4">Dashboard</h2>
+
+      {/* Quick Stats */}
+      <Row className="mb-4">
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Total Balance</h5>
+            <h3 className="text-success">{totalBalance.toLocaleString()} USD</h3>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Accounts</h5>
+            <h3>{accounts.length}</h3>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Transactions</h5>
+            <h3>
+              {accounts.reduce((sum, acc) => sum + (acc.transactions?.length || 0), 0)}
+            </h3>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Charts */}
+      <Row className="mb-4">
+        <Col md={6}>
+          <Card className="card-shadow p-3">
+            <h5 className="mb-3">Balance Distribution</h5>
+            <Pie data={balanceData} />
+          </Card>
+        </Col>
+        <Col md={6}>
+          <Card className="card-shadow p-3">
+            <h5 className="mb-3">Transactions by Account</h5>
+            <Bar data={txnData} />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Recent Transactions */}
+      <Card className="card-shadow p-3">
+        <h5 className="mb-3">Recent Transactions</h5>
+        {recentTxns.length === 0 ? (
+          <p>No transactions yet.</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-sm table-bordered text-center">
+              <thead className="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th>Batch ID</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTxns.map((t, i) => (
+                  <tr key={i}>
+                    <td>{new Date(t.date).toLocaleString()}</td>
+                    <td>{t.acc}</td>
+                    <td>{t.type}</td>
+                    <td>{t.batchId}</td>
+                    <td>{t.amount}</td>
+                    <td>
+                      <span
+                        className={
+                          "badge " +
+                          (t.status === "Approved"
+                            ? "bg-success"
+                            : t.status === "Rejected"
+                            ? "bg-danger"
+                            : "bg-secondary")
+                        }
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+
+---
+
+🔧 Step 3: Add Styles in common.css
+
+/* Dashboard charts */
+.card-shadow canvas {
+  max-height: 300px;
+}
+
+
+---
+
+✅ Now your Dashboard has:
+
+Quick stats
+
+Balance distribution pie chart
+
+Transactions by account bar chart
+
+Recent transactions table
+
+
+
+---
+
+Do you also want me to add a notification section (like “⚡ 2 new payments awaiting approval”) inside the Dashboard stats row?
+
+
+
+
+Perfect 🔥 let’s add a notification section that shows live role-based alerts right inside the Dashboard!
+
+I’ll extend your Dashboard.jsx with:
+
+A notifications card (⚡)
+
+Role-based messages (creator, approver, viewer)
+
+
+
+---
+
+🔧 Updated Dashboard.jsx
+
+// src/pages/Dashboard.jsx
+import React, { useEffect, useState } from "react";
+import { getAccounts } from "../common/storage/accountBalanceStore";
+import { getAllBatches } from "../common/storage/payrollStore";
+import { Card, Row, Col } from "react-bootstrap";
+import { Pie, Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+} from "chart.js";
+
+ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale, LinearScale, BarElement);
+
+export default function Dashboard() {
+  const [accounts, setAccounts] = useState([]);
+  const [batches, setBatches] = useState([]);
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {
+    username: "Guest",
+    role: "viewer",
+  };
+
+  useEffect(() => {
+    setAccounts(getAccounts());
+    setBatches(getAllBatches());
+  }, []);
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const recentTxns = accounts
+    .flatMap(acc =>
+      (acc.transactions || []).map(t => ({ ...t, acc: acc.number }))
+    )
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
+
+  // 📊 Pie Chart Data for Balances
+  const balanceData = {
+    labels: accounts.map(a => a.number),
+    datasets: [
+      {
+        data: accounts.map(a => a.balance),
+        backgroundColor: ["#0072CE", "#00A859", "#FFC107", "#FF5733", "#6F42C1"],
+      },
+    ],
+  };
+
+  // 📈 Bar Chart Data for Transactions
+  const txnData = {
+    labels: accounts.map(a => a.number),
+    datasets: [
+      {
+        label: "Total Transactions (Amount)",
+        data: accounts.map(a =>
+          (a.transactions || []).reduce((sum, t) => sum + Number(t.amount), 0)
+        ),
+        backgroundColor: "#0072CE",
+      },
+    ],
+  };
+
+  // 🔔 Notifications based on role
+  const getNotifications = () => {
+    if (currentUser.role === "creator") {
+      const drafts = batches.filter(b => b.status === "Draft").length;
+      return [`${drafts} drafts waiting to be submitted.`];
+    }
+    if (currentUser.role === "approver") {
+      const pending = batches.filter(b => b.status === "Submitted").length;
+      return [`${pending} payrolls pending approval.`];
+    }
+    if (currentUser.role === "viewer") {
+      return ["Viewing mode: You can only see reports & transactions."];
+    }
+    return ["No notifications."];
+  };
+
+  const notifications = getNotifications();
+
+  return (
+    <div className="container-fluid my-4">
+      <h2 className="mb-4">Dashboard</h2>
+
+      {/* Quick Stats */}
+      <Row className="mb-4">
+        <Col md={3}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Total Balance</h5>
+            <h3 className="text-success">{totalBalance.toLocaleString()} USD</h3>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Accounts</h5>
+            <h3>{accounts.length}</h3>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="card-shadow text-center p-3">
+            <h5>Transactions</h5>
+            <h3>
+              {accounts.reduce((sum, acc) => sum + (acc.transactions?.length || 0), 0)}
+            </h3>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="card-shadow text-center p-3 bg-light">
+            <h5>⚡ Notifications</h5>
+            <ul className="list-unstyled mb-0">
+              {notifications.map((n, i) => (
+                <li key={i}>• {n}</li>
+              ))}
+            </ul>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Charts */}
+      <Row className="mb-4">
+        <Col md={6}>
+          <Card className="card-shadow p-3">
+            <h5 className="mb-3">Balance Distribution</h5>
+            <Pie data={balanceData} />
+          </Card>
+        </Col>
+        <Col md={6}>
+          <Card className="card-shadow p-3">
+            <h5 className="mb-3">Transactions by Account</h5>
+            <Bar data={txnData} />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Recent Transactions */}
+      <Card className="card-shadow p-3">
+        <h5 className="mb-3">Recent Transactions</h5>
+        {recentTxns.length === 0 ? (
+          <p>No transactions yet.</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-sm table-bordered text-center">
+              <thead className="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th>Batch ID</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTxns.map((t, i) => (
+                  <tr key={i}>
+                    <td>{new Date(t.date).toLocaleString()}</td>
+                    <td>{t.acc}</td>
+                    <td>{t.type}</td>
+                    <td>{t.batchId}</td>
+                    <td>{t.amount}</td>
+                    <td>
+                      <span
+                        className={
+                          "badge " +
+                          (t.status === "Approved"
+                            ? "bg-success"
+                            : t.status === "Rejected"
+                            ? "bg-danger"
+                            : "bg-secondary")
+                        }
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+
+---
+
+🔧 What’s new:
+
+Role-based notifications appear in the dashboard.
+
+Creator → sees how many drafts to submit.
+
+Approver → sees how many payrolls to approve.
+
+Viewer → sees a “read-only mode” message.
+
+
+Notifications are styled in a ⚡ card tile alongside quick stats.
+
+
+
+---
+
+👉 Do you want me to also add a red badge notification counter in the sidebar next to Approvals / Manage Payroll menu items, like in real banking apps?
+
+
+
