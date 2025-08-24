@@ -1,0 +1,42 @@
+// src/common/components/Sidebar.jsx
+import React from "react";
+import { NavLink } from "react-router-dom";
+
+export default function Sidebar() {
+  const allowedPages = JSON.parse(localStorage.getItem("allowedPages")) || [];
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
+
+  const allPages = [
+    { name: "Dashboard", path: "/dashboard", icon: "🏠" },
+    { name: "Payroll Payment", path: "/payroll", icon: "💸" },
+    { name: "Manage Payroll", path: "/manage-payroll", icon: "📂" },
+    { name: "Approvals", path: "/approvals", icon: "✅" },
+    { name: "Account Balance", path: "/balances", icon: "💰" },
+    { name: "Transactions", path: "/txns", icon: "📊" },
+    { name: "Print Preview", path: "/print", icon: "🖨️" },
+  ];
+
+  // Only keep allowed pages
+  const filteredPages = allPages.filter((page) =>
+    allowedPages.some((p) => p.path === page.path)
+  );
+
+  return (
+    <div className="sidebar brand-gradient">
+      <h4 className="p-3 text-white">Welcome, {currentUser.username}</h4>
+      <ul className="nav flex-column">
+        {filteredPages.map((page) => (
+          <li key={page.path} className="nav-item">
+            <NavLink
+              to={page.path}
+              className="nav-link text-white"
+              activeclassname="active"
+            >
+              {page.icon} {page.name}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
