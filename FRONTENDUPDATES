@@ -960,6 +960,60 @@ export default function App(){
     </Router>
   );
 }
+
+Updated.....
+export default function App(){
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Login page should not have Header, Footer, Sidebar */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Dashboard (with header/footer) */}
+        <Route path="/dashboard" element={
+          <Layout><Dashboard/></Layout>
+        } />
+
+        {/* Creator (maker) */}
+        <Route path="/payroll" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Creator"]}><PayrollPayment/></ProtectedRoute>
+          </Layout>
+        } />
+        <Route path="/manage-payroll" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Creator"]}><ManagePayroll/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Approver (checker) */}
+        <Route path="/approvals" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Approver"]}><ApprovePayroll/></ProtectedRoute>
+          </Layout>
+        } />
+        <Route path="/balances" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Approver"]}><AccountBalance/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Viewer (auditor) */}
+        <Route path="/print" element={
+          <Layout>
+            <ProtectedRoute allowedRoles={["Viewer"]}><PrintPreview/></ProtectedRoute>
+          </Layout>
+        } />
+
+        {/* Shared */}
+        <Route path="/txns" element={<Layout><TransactionList/></Layout>} />
+      </Routes>
+    </Router>
+  );
+}
+
 ```
 
 ---
