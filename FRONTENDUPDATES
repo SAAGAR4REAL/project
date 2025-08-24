@@ -979,3 +979,177 @@ export default function App(){
 * **Continuity**: unified colors, buttons, cards, spacing.
 
 If you want, I can also patch your **ManagePayroll** and **PayrollPayment** to add **PDF preview** buttons the same way (one-liners using `openPrintWindow`).
+
+Got it 👍 You want to **integrate account balances with the Payroll Payment (create payment) page** so that when the **Creator (Maker)** selects a debit account and enters a payment, we check the account’s balance and later deduct it when the Approver approves the payroll.
+
+Here’s the step-by-step update:
+
+---
+
+### 1. 📂 `src/common/mockData.js`
+
+Add some accounts with balances if not already present:
+
+```js
+export const accounts = [
+  { id: 1, number: "123-456-789", name: "Main Corporate Account", balance: 100000 },
+  { id: 2, number: "987-654-321", name: "Salary Account", balance: 50000 },
+  { id: 3, number: "555-333-111", name: "Vendor Account", balance: 75000 },
+];
+```
+
+---
+
+### 2. 📂 `src/common/storage/accountStore.js`
+
+Create a small **account storage utility** to manage balances:
+
+```js
+// src/common/storage/accountStore.js
+import { accounts } from "../mockData";
+
+const ACCOUNT_KEY = "accounts";
+
+export function getAccounts() {
+  const stored = localStorage.getItem(ACCOUNT_KEY);
+  return stored ? JSON.parse(stored) : accounts;
+}
+
+export function saveAccounts(updated) {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(updated));
+}
+
+// Deduct balance after approval
+export function deductFromAccount(accountNumber, amount) {
+  const all = getAccounts();
+  const idx = all.findIndex((a) => a.number === accountNumber);
+  if (idx !== -1) {
+    all[idx].balance -= amount;
+    saveAccounts(all);
+  }
+}
+```
+
+---
+
+### 3. 📂 `src/pages/payroll/PayrollPayment.jsx`
+
+👉 Update the **Instruction Details** section to **show the selected account balance dynamically**.
+
+Find this part:
+
+```jsx
+<div className="col-12 col-md-4">
+  <label className="form-label fw-semibold">
+    Select Debit Account <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select form-select-sm"
+    name="debitAccount"
+    value={instruction.debitAccount}
+    onChange={onInstruction}
+    required
+  >
+    <option value="">Select Debit Account</option>
+    {accounts.map((a) => (
+      <option key={a.id} value={a.number}>
+        {a.number} — {a.name}
+      </option>
+    ))}
+  </select>
+</div>
+```
+
+🔽 Replace with this:
+
+```jsx
+<div className="col-12 col-md-4">
+  <label className="form-label fw-semibold">
+    Select Debit Account <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select form-select-sm"
+    name="debitAccount"
+    value={instruction.debitAccount}
+    onChange={onInstruction}
+    required
+  >
+    <option value="">Select Debit Account</option>
+    {accounts.map((a) => (
+      <option key={a.id} value={a.number}>
+        {a.number} — {a.name} (Balance: {a.balance.toLocaleString()})
+      </option>
+    ))}
+  </select>
+</div>
+```
+
+✅ Now the dropdown shows account balance alongside the account.
+
+---
+
+### 4. 📂 `src/pages/approval/Approval.jsx`
+
+When the **Approver approves**, deduct the money:
+
+Find where you already approve:
+
+```js
+const confirmDecision = () => {
+  if (enteredPasscode === APPROVER_PASSCODE) {
+    const { batchId, decision } = pendingDecision;
+    const meta = {
+      approvedBy: "Approver User",
+      approvedAt: new Date().toISOString(),
+      remarks: remarks[batchId] || "",
+    };
+    setStatus(batchId, decision, meta);
+    refresh();
+    setMessage(`Payroll batch ${decision} successfully!`);
+    setShowPasscodeModal(false);
+  } else {
+    setMessage("❌ Incorrect passcode. Try again.");
+  }
+};
+```
+
+🔽 Update it like this:
+
+```js
+import { deductFromAccount } from "../../common/storage/accountStore";
+
+// inside confirmDecision:
+if (enteredPasscode === APPROVER_PASSCODE) {
+  const { batchId, decision } = pendingDecision;
+  const batch = submissions.find((b) => b.id === batchId);
+
+  if (decision === "Approved") {
+    // Calculate total
+    const totalAmount = batch.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    deductFromAccount(batch.instruction.debitAccount, totalAmount);
+  }
+
+  const meta = {
+    approvedBy: "Approver User",
+    approvedAt: new Date().toISOString(),
+    remarks: remarks[batchId] || "",
+  };
+  setStatus(batchId, decision, meta);
+  refresh();
+  setMessage(`Payroll batch ${decision} successfully!`);
+  setShowPasscodeModal(false);
+}
+```
+
+---
+
+✅ **Result after integration:**
+
+* Creator sees available balances when creating a payment.
+* Approver’s approval deducts money from the chosen debit account.
+* The updated balance is reflected in the **Account Balance page** (we’ll wire that up fully next).
+
+---
+
+Do you want me to now **update the Account Balance page** to fetch the updated balances and also allow PDF report download?
+
