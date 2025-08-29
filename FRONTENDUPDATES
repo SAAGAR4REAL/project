@@ -2137,7 +2137,536 @@ Notifications are styled in a ⚡ card tile alongside quick stats.
 
 ---
 
-👉 Do you want me to also add a red badge notification counter in the sidebar next to Approvals / Manage Payroll menu items, like in real banking apps?
+Got it ✅ — I’ll consolidate everything into **one place** so you can just copy-paste.
+Here’s the **full updated codebase** for **User Story 6 (transaction print / preview)** and **User Story 7 (account balance with statements + drill down + status)**.
+
+---
+
+# 🔹 1. `src/common/storage/accountBalanceStore.js`
+
+```javascript
+// src/common/storage/accountBalanceStore.js
+
+const STORAGE_KEY = "accounts_data_v2";
+
+// Save accounts to localStorage
+export function saveAccounts(accounts) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+}
+
+// Get accounts from localStorage
+export function getAccounts() {
+  const data = localStorage.getItem(STORAGE_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+// Initialize accounts only once
+export function initAccounts(accounts) {
+  const existing = getAccounts();
+  if (!existing || existing.length === 0) {
+    saveAccounts(accounts);
+    return accounts;
+  }
+  return existing;
+}
+
+// Update balance and add a transaction (only for Accepted txns)
+export function updateAccountBalance(accountNumber, amount, txn) {
+  let accounts = getAccounts();
+  accounts = accounts.map(acc => {
+    if (acc.accountNumber === accountNumber) {
+      const newBalance = acc.balance + amount;
+      return {
+        ...acc,
+        balance: newBalance,
+        transactions: [...(acc.transactions || []), { ...txn, balanceAfter: newBalance }]
+      };
+    }
+    return acc;
+  });
+  saveAccounts(accounts);
+  return accounts;
+}
+
+// Add a transaction without changing balance (Pending/Rejected)
+export function addTransactionToAccount(accountNumber, txn) {
+  let accounts = getAccounts();
+  accounts = accounts.map(acc => {
+    if (acc.accountNumber === accountNumber) {
+      return {
+        ...acc,
+        transactions: [...(acc.transactions || []), txn]
+      };
+    }
+    return acc;
+  });
+  saveAccounts(accounts);
+  return accounts;
+}
+```
+
+---
+
+# 🔹 2. `src/common/storage/payrollStore.js`
+
+```javascript
+// src/common/storage/payrollStore.js
+import { initAccounts, getAccounts, updateAccountBalance, addTransactionToAccount } from "./accountBalanceStore";
+
+const BATCH_KEY = "pi_batches_v2";
+const TXN_KEY = "pi_transactions_v2";
+
+export function getAllBatches() {
+  const data = localStorage.getItem(BATCH_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function addBatch(batch) {
+  const batches = getAllBatches();
+  batches.push(batch);
+  localStorage.setItem(BATCH_KEY, JSON.stringify(batches));
+}
+
+export function getAllTransactions() {
+  const data = localStorage.getItem(TXN_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function saveTransaction(txn) {
+  const txns = getAllTransactions();
+  const enriched = {
+    ...txn,
+    status: txn.status || "Pending"
+  };
+
+  // Balance logic
+  if (enriched.status === "Accepted") {
+    updateAccountBalance(enriched.accountNumber, enriched.amount, enriched);
+  } else {
+    addTransactionToAccount(enriched.accountNumber, enriched);
+  }
+
+  txns.push(enriched);
+  localStorage.setItem(TXN_KEY, JSON.stringify(txns));
+}
+
+// Accounts
+export function getAllAccounts() {
+  return getAccounts();
+}
+
+export function getAccountByNumber(accNo) {
+  const accounts = getAccounts();
+  return accounts.find(acc => acc.accountNumber === accNo);
+}
+
+// Utility: download text file
+export function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// Seed demo accounts
+export function seedDemoAccounts() {
+  initAccounts([
+    { accountNumber: "1234567890", name: "Savings Account", balance: 5000, currency: "INR", transactions: [] },
+    { accountNumber: "9876543210", name: "Current Account", balance: 10000, currency: "INR", transactions: [] }
+  ]);
+}
+```
+
+---
+
+# 🔹 3. `src/common/utils/pdf.js`
+
+```javascript
+// src/common/utils/pdf.js
+
+/**
+ * Opens a new print window with given HTML content
+ * @param {Object} param0 
+ * @param {string} param0.title - Title of print page
+ * @param {string} param0.html - Inner HTML content
+ */
+export function openPrintWindow({ title, html }) {
+  const win = window.open("", "_blank", "width=800,height=600");
+  if (!win) {
+    alert("Popup blocked! Please allow popups to print.");
+    return;
+  }
+  win.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .txn-card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+          h2 { margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <h2>${title}</h2>
+        ${html}
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+```
+
+---
+
+# 🔹 4. `src/pages/account-balance/AccountBalance.jsx`
+
+```javascript
+// src/pages/account-balance/AccountBalance.jsx
+
+import React, { useEffect, useState } from "react";
+import { seedDemoAccounts, getAllAccounts, getAllTransactions, downloadText } from "../../common/storage/payrollStore";
+import { openPrintWindow } from "../../common/utils/pdf";
+import logo from "../../assets/sc-logo.png";
+
+export default function AccountBalance() {
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [transactions, setTransactions] = useState([]);
+  const [selectedTxn, setSelectedTxn] = useState(null);
+
+  useEffect(() => {
+    seedDemoAccounts();
+    setAccounts(getAllAccounts());
+  }, []);
+
+  useEffect(() => {
+    if (selectedAccount) {
+      const accTxns = selectedAccount.transactions || [];
+      const globalTxns = getAllTransactions().filter(txn => txn.accountNumber === selectedAccount.accountNumber);
+      let merged = [...accTxns, ...globalTxns];
+      if (fromDate) {
+        merged = merged.filter(txn => new Date(txn.date) >= new Date(fromDate));
+      }
+      if (toDate) {
+        merged = merged.filter(txn => new Date(txn.date) <= new Date(toDate));
+      }
+      setTransactions(merged);
+    }
+  }, [selectedAccount, fromDate, toDate]);
+
+  const handleDownloadStatement = () => {
+    if (!selectedAccount) return;
+    let csv = "Date,Description,Amount,Balance,Status\n";
+    transactions.forEach(txn => {
+      csv += `${txn.date},${txn.description},${txn.amount},${txn.balanceAfter},${txn.status}\n`;
+    });
+    downloadText(`${selectedAccount.accountNumber}_statement.csv`, csv);
+  };
+
+  const handlePrintTxn = txn => {
+    const html = `
+      <div class="txn-card">
+        <p><strong>Transaction ID:</strong> ${txn.id || "N/A"}</p>
+        <p><strong>Date:</strong> ${txn.date}</p>
+        <p><strong>Description:</strong> ${txn.description}</p>
+        <p><strong>Amount:</strong> ${txn.amount}</p>
+        <p><strong>Balance After:</strong> ${txn.balanceAfter}</p>
+        <p><strong>Status:</strong> ${txn.status}</p>
+      </div>
+    `;
+    openPrintWindow({ title: "Transaction Details", html });
+  };
+
+  return (
+    <div className="container mt-4">
+      <div className="d-flex align-items-center mb-4">
+        <img src={logo} alt="SC Logo" style={{ height: "40px", marginRight: "10px" }} />
+        <h3>Account Balance & Statement</h3>
+      </div>
+
+      <div className="mb-3">
+        <label className="form-label">Select Account</label>
+        <select
+          className="form-select"
+          onChange={e => {
+            const acc = accounts.find(a => a.accountNumber === e.target.value);
+            setSelectedAccount(acc);
+            setSelectedTxn(null);
+          }}
+        >
+          <option value="">-- Choose --</option>
+          {accounts.map(acc => (
+            <option key={acc.accountNumber} value={acc.accountNumber}>
+              {acc.name} ({acc.accountNumber})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedAccount && (
+        <div className="card p-3 mb-3">
+          <h5>Account Number: {selectedAccount.accountNumber}</h5>
+          <p>Balance: {selectedAccount.balance} {selectedAccount.currency}</p>
+
+          <div className="row mb-3">
+            <div className="col">
+              <label className="form-label">From</label>
+              <input type="date" className="form-control" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            </div>
+            <div className="col">
+              <label className="form-label">To</label>
+              <input type="date" className="form-control" value={toDate} onChange={e => setToDate(e.target.value)} />
+            </div>
+          </div>
+
+          <button className="btn btn-primary mb-3" onClick={handleDownloadStatement}>
+            Download Statement (CSV)
+          </button>
+
+          <h6>Transactions</h6>
+          <table className="table table-bordered">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Balance After</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center">No transactions found</td>
+                </tr>
+              )}
+              {transactions.map((txn, idx) => (
+                <tr key={idx}>
+                  <td>{txn.date}</td>
+                  <td>{txn.description}</td>
+                  <td>{txn.amount}</td>
+                  <td>{txn.balanceAfter}</td>
+                  <td>
+                    <span
+                      className={
+                        txn.status === "Accepted"
+                          ? "badge bg-success"
+                          : txn.status === "Rejected"
+                          ? "badge bg-danger"
+                          : "badge bg-warning text-dark"
+                      }
+                    >
+                      {txn.status}
+                    </span>
+                  </td>
+                  <td>
+                    <button className="btn btn-sm btn-info me-2" onClick={() => setSelectedTxn(txn)}>
+                      View
+                    </button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handlePrintTxn(txn)}>
+                      Print
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {selectedTxn && (
+            <div className="card p-3 mt-3">
+              <h6>Transaction Details</h6>
+              <pre>{JSON.stringify(selectedTxn, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# 🔹 5. `src/pages/transactions/TransactionList.jsx`
+
+```javascript
+// src/pages/transactions/TransactionList.jsx
+
+import React, { useEffect, useState } from "react";
+import { getAllTransactions } from "../../common/storage/payrollStore";
+import { openPrintWindow } from "../../common/utils/pdf";
+import logo from "../../assets/sc-logo.png";
+
+export default function TransactionList() {
+  const [transactions, setTransactions] = useState([]);
+  const [selectedTxn, setSelectedTxn] = useState(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    setTransactions(getAllTransactions());
+  }, []);
+
+  const handlePrintTxn = txn => {
+    const html = `
+      <div class="txn-card">
+        <p><strong>Transaction ID:</strong> ${txn.id || "N/A"}</p>
+        <p><strong>Account Number:</strong> ${txn.accountNumber}</p>
+        <p><strong>Date:</strong> ${txn.date}</p>
+        <p><strong>Description:</strong> ${txn.description}</p>
+        <p><strong>Amount:</strong> ${txn.amount}</p>
+        <p><strong>Balance After:</strong> ${txn.balanceAfter}</p>
+        <p><strong>Status:</strong> ${txn.status}</p>
+      </div>
+    `;
+    openPrintWindow({ title: "Transaction Details", html });
+  };
+
+  // Search filter
+  const filteredTxns = transactions.filter(txn =>
+    txn.accountNumber.toString().includes(searchTerm) ||
+    txn.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (txn.status && txn.status.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const totalPages = Math.ceil(filteredTxns.length / pageSize);
+  const paginatedTxns = filteredTxns.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  return (
+    <div className="container mt-4">
+      <div className="d-flex align-items-center mb-4">
+        <img src={logo} alt="SC Logo" style={{ height: "40px", marginRight: "10px" }} />
+        <h3>All Transactions</h3>
+      </div>
+
+      {/* Search bar */}
+      <div className="mb-3">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search by account number, description, or status..."
+          value={searchTerm}
+          onChange={e => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+      </div>
+
+      <table className="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Account</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Balance After</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedTxns.length === 0 && (
+            <tr>
+              <td colSpan="7" className="text-center">No transactions found</td>
+            </tr>
+          )}
+          {paginatedTxns.map((txn, idx) => (
+            <tr key={idx}>
+              <td>{txn.date}</td>
+              <td>{txn.accountNumber}</td>
+              <td>{txn.description}</td>
+              <td>{txn.amount}</td>
+              <td>{txn.balanceAfter}</td>
+              <td>
+                <span
+                  className={
+                    txn.status === "Accepted"
+                      ? "badge bg-success"
+                      : txn.status === "Rejected"
+                      ? "badge bg-danger"
+                      : "badge bg-warning text-dark"
+                  }
+                >
+                  {txn.status}
+                </span>
+              </td>
+              <td>
+                <button className="btn btn-sm btn-info me-2" onClick={() => setSelectedTxn(txn)}>
+                  View
+                </button>
+                <button className="btn btn-sm btn-secondary" onClick={() => handlePrintTxn(txn)}>
+                  Print
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination Controls */}
+      {filteredTxns.length > pageSize && (
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button
+            className="btn btn-outline-primary btn-sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+          >
+            Previous
+          </button>
+
+          <span>Page {currentPage} of {totalPages}</span>
+
+          <button
+            className="btn btn-outline-primary btn-sm"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => p + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {selectedTxn && (
+        <div className="card p-3 mt-3">
+          <h6>Transaction Details</h6>
+          <pre>{JSON.stringify(selectedTxn, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+✅ With these 5 files you now fully cover **User Story 6 & 7**:
+
+* Account balance updated only for **Accepted** txns.
+* Transactions list with **pagination + search + status**.
+* Print/HTML preview working.
+* CSV statement download from Account Balance page.
+
+---
+
+Would you like me to also prepare a **demo seed set of transactions** (some Accepted, some Pending, some Rejected) so that when you load the app, you immediately see test data?
 
 
 
